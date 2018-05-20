@@ -60,7 +60,8 @@ namespace WindBot.Game.AI
             DataContractJsonSerializer serializer = new DataContractJsonSerializer(typeof(DialogsData));
             string dialogfilename = game.Dialog;
             
-            using (Stream fs = WindBot.Program.Assets.Open("Dialogs/" + dialogfilename + ".json"))
+            //using (Stream fs = WindBot.Program.Assets.Open("Dialogs/" + dialogfilename + ".json"))
+            using (Stream fs = File.OpenRead(Path.Combine(WindBot.AssetPath, "windbot/Dialogs/", dialogfilename + ".json")))
             {
                 DialogsData data = (DialogsData)serializer.ReadObject(fs);
                 _welcome = data.welcome;
@@ -161,7 +162,7 @@ namespace WindBot.Game.AI
 
         private void InternalSendMessage(IList<string> array, params object[] opts)
         {
-            string message = string.Format(array[Program.Rand.Next(array.Count)], opts);
+            string message = string.Format(array[WindBot.Rand.Next(array.Count)], opts);
             if (message != "")
                 _game.Chat(message);
         }

@@ -894,7 +894,7 @@ namespace WindBot.Game
             if (numbers.Contains(m_number))
                 return numbers.IndexOf(m_number);
 
-            return Program.Rand.Next(0, numbers.Count); // Returns a random number.
+            return WindBot.Rand.Next(0, numbers.Count); // Returns a random number.
         }
 
         /// <summary>

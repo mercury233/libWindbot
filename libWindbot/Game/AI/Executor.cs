@@ -36,12 +36,12 @@ namespace WindBot.Game.AI
 
         public virtual int OnRockPaperScissors()
         {
-            return Program.Rand.Next(1, 4);
+            return WindBot.Rand.Next(1, 4);
         }
 
         public virtual bool OnSelectHand()
         {
-            return Program.Rand.Next(2) > 0;
+            return WindBot.Rand.Next(2) > 0;
         }
 
         /// <summary>

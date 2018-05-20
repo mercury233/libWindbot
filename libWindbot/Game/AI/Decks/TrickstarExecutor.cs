@@ -328,7 +328,7 @@ namespace WindBot.Game.AI.Decks
             int n = list.Count;
             while(n-- > 1)
             {
-                int index = Program.Rand.Next(n + 1);
+                int index = WindBot.Rand.Next(n + 1);
                 ClientCard temp = list[index];
                 list[index] = list[n];
                 list[n] = temp;

@@ -19,7 +19,6 @@ namespace WindBot
             Deck = null;
             Dialog = "default";
             Host = "127.0.0.1";
-            //Host = "192.168.1.233";
             Port = 7911;
             HostInfo = "";
             Version = 0x1343;

@@ -43,8 +43,9 @@ namespace WindBot.Game
             StreamReader reader = null;
             try
             {
+                reader = new StreamReader(new FileStream(Path.Combine(WindBot.AssetPath, "windbot/Decks/", name + ".ydk"), FileMode.Open, FileAccess.Read));
                 //reader = new StreamReader(new FileStream("Decks/" + name + ".ydk", FileMode.Open, FileAccess.Read));
-                reader = new StreamReader(Program.Assets.Open("Decks/" + name + ".ydk"));
+                //reader = new StreamReader(Program.Assets.Open("Decks/" + name + ".ydk"));
 
                 Deck deck = new Deck();
                 bool side = false;
