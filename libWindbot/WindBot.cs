@@ -10,7 +10,6 @@ namespace WindBot
 {
     public class WindBot
     {
-        internal static Random Rand;
         public static string AssetPath;
 
         public static void Test1(string test)
@@ -32,7 +31,7 @@ namespace WindBot
 
         public static void InitAndroid(string assetPath, string databasePath)
         {
-            Rand = new Random();
+            Program.Rand = new Random();
             AssetPath = assetPath;
             DecksManager.Init();
             NamedCardsManager.Init(databasePath);
@@ -94,5 +93,10 @@ namespace WindBot
     }
 #endif
         }
+    }
+
+    public class Program
+    {
+        internal static Random Rand;
     }
 }

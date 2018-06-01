@@ -41,7 +41,7 @@ namespace WindBot.Game.AI.Decks
 
         public override int OnSelectOption(IList<int> options)
         {
-            return WindBot.Rand.Next(options.Count);
+            return Program.Rand.Next(options.Count);
         }
 
     }

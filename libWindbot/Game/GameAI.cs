@@ -71,6 +71,14 @@ namespace WindBot.Game
         }
 
         /// <summary>
+        /// Called when any player draw card.
+        /// </summary>
+        public void OnDraw(int player)
+        {
+            Executor.OnDraw(player);
+        }
+
+        /// <summary>
         /// Called when it's a new turn.
         /// </summary>
         public void OnNewTurn()
@@ -327,6 +335,26 @@ namespace WindBot.Game
                 i++;
             }
             return used;
+        }
+
+        /// <summary>
+        /// Called when the AI has to sort cards.
+        /// </summary>
+        /// <param name="cards">Cards to sort.</param>
+        /// <returns>List of sorted cards.</returns>
+        public IList<ClientCard> OnCardSorting(IList<ClientCard> cards)
+        {
+
+            IList<ClientCard> result = Executor.OnCardSorting(cards);
+            if (result != null)
+                return result;
+            result = new List<ClientCard>();
+            // TODO: use selector
+            for (int i = 0; i < cards.Count; i++)
+            {
+                result.Add(cards[i]);
+            }
+            return result;
         }
 
         /// <summary>
@@ -894,7 +922,7 @@ namespace WindBot.Game
             if (numbers.Contains(m_number))
                 return numbers.IndexOf(m_number);
 
-            return WindBot.Rand.Next(0, numbers.Count); // Returns a random number.
+            return Program.Rand.Next(0, numbers.Count); // Returns a random number.
         }
 
         /// <summary>
