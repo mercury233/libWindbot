@@ -52,8 +52,10 @@
     <Compile Include="Game\AI\CardSelector.cs" />
     <Compile Include="Game\AI\DeckAttribute.cs" />
     <Compile Include="Game\AI\DecksManager.cs" />
+    <Compile Include="Game\AI\Decks\AltergeistExecutor.cs" />
     <Compile Include="Game\AI\Decks\BlackwingExecutor.cs" />
     <Compile Include="Game\AI\Decks\BlueEyesExecutor.cs" />
+    <Compile Include="Game\AI\Decks\BlueEyesMaxDragonExecutor.cs" />
     <Compile Include="Game\AI\Decks\BurnExecutor.cs" />
     <Compile Include="Game\AI\Decks\ChainBurnExecutor.cs" />
     <Compile Include="Game\AI\Decks\CyberDragonExecutor.cs" />
@@ -64,6 +66,7 @@
     <Compile Include="Game\AI\Decks\FrogExecutor.cs" />
     <Compile Include="Game\AI\Decks\GravekeeperExecutor.cs" />
     <Compile Include="Game\AI\Decks\GraydleExecutor.cs" />
+    <Compile Include="Game\AI\Decks\GrenMajuThunderBoarderExecutor.cs" />
     <Compile Include="Game\AI\Decks\HorusExecutor.cs" />
     <Compile Include="Game\AI\Decks\LightswornExecutor.cs" />
     <Compile Include="Game\AI\Decks\LightswornShaddoldinosourExecutor.cs" />
@@ -71,6 +74,7 @@
     <Compile Include="Game\AI\Decks\MokeyMokeyKingExecutor.cs" />
     <Compile Include="Game\AI\Decks\NekrozExecutor.cs" />
     <Compile Include="Game\AI\Decks\OldSchoolExecutor.cs" />
+    <Compile Include="Game\AI\Decks\PhantasmExecutor.cs" />
     <Compile Include="Game\AI\Decks\QliphortExecutor.cs" />
     <Compile Include="Game\AI\Decks\RainbowExecutor.cs" />
     <Compile Include="Game\AI\Decks\Rank5Executor.cs" />
@@ -134,7 +138,7 @@
     <Compile Include="YGOSharp.OCGWrapper.Enums\CardType.cs" />
     <Compile Include="YGOSharp.OCGWrapper.Enums\DuelPhase.cs" />
     <Compile Include="YGOSharp.OCGWrapper.Enums\GameMessage.cs" />
-    <Compile Include="YGOSharp.OCGWrapper.Enums\LinkMarker.cs" />
+    <Compile Include="YGOSharp.OCGWrapper.Enums\CardLinkMarker.cs" />
     <Compile Include="YGOSharp.OCGWrapper.Enums\Query.cs" />
     <Compile Include="YGOSharp.OCGWrapper\Card.cs" />
     <Compile Include="YGOSharp.OCGWrapper\CardsManager.cs" />
