@@ -33,13 +33,13 @@ namespace WindBot
             return card1.Name;
         }
 
-        public static void InitAndroid(string assetPath, string databasePath)
+        public static void InitAndroid(string assetPath, string databasePath, string confPath)
         {
             Program.Rand = new Random();
             AssetPath = assetPath;
             DecksManager.Init();
             NamedCardsManager.Init(databasePath);
-            ReadBots();
+            ReadBots(confPath);
         }
 
         private static IList<string> ParseArgs(string arg)
@@ -121,9 +121,9 @@ namespace WindBot
 
         private static IList<BotInfo> Bots = new List<BotInfo>();
 
-        private static void ReadBots()
+        private static void ReadBots(string confPath)
         {
-            StreamReader reader = new StreamReader(new FileStream(Path.Combine(AssetPath, "windbot/bot.conf"), FileMode.Open, FileAccess.Read));
+            StreamReader reader = new StreamReader(new FileStream(confPath, FileMode.Open, FileAccess.Read));
             while (!reader.EndOfStream)
             {
                 string line = reader.ReadLine().Trim();
