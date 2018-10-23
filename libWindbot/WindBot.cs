@@ -53,7 +53,6 @@ namespace WindBot
             Match match = Regex.Match(arg, "Random=(\\w+)");
             if (match.Success)
             {
-                //ReadBots();
                 string randomFlag = match.Groups[1].Value;
                 string command = GetRandomBot(randomFlag);
                 if (command != "")
