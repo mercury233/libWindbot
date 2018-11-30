@@ -67,7 +67,7 @@ namespace WindBot
             WindBotInfo Info = new WindBotInfo();
             foreach (string param in args)
             {
-                string[] p = param.Split('=');
+                string[] p = param.Split(new char['=']);
                 p[1] = p[1].Replace("'", "");
                 if (p[0] == "Name") Info.Name = p[1];
                 if (p[0] == "Deck") Info.Deck = p[1];
@@ -133,7 +133,7 @@ namespace WindBot
                     newBot.command = reader.ReadLine().Trim();
                     newBot.desc = reader.ReadLine().Trim();
                     line = reader.ReadLine().Trim();
-                    newBot.flags = line.Split(' ');
+                    newBot.flags = line.Split(new char[' ']);
                     Bots.Add(newBot);
                 }
             }
