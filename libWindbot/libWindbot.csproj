@@ -61,6 +61,7 @@
     <Compile Include="Game\AI\Decks\CyberDragonExecutor.cs" />
     <Compile Include="Game\AI\Decks\DoEveryThingExecutor.cs" />
     <Compile Include="Game\AI\Decks\DarkMagicianExecutor.cs" />
+    <Compile Include="Game\AI\Decks\DragunExecutor.cs" />
     <Compile Include="Game\AI\Decks\DragunityExecutor.cs" />
     <Compile Include="Game\AI\Decks\EvilswarmExecutor.cs" />
     <Compile Include="Game\AI\Decks\FrogExecutor.cs" />
