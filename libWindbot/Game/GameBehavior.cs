@@ -522,14 +522,17 @@ namespace WindBot.Game
             int final = _duel.Fields[player].LifePoints - packet.ReadInt32();
             if (final < 0) final = 0;
             if (_debug)
-                Logger.WriteLine("(" + player.ToString() + " got damage , LifePoint left= " + final.ToString() + ")");
+                Logger.WriteLine("(" + player.ToString() + " got damage , LifePoint left = " + final.ToString() + ")");
             _duel.Fields[player].LifePoints = final;
         }
 
         private void OnRecover(BinaryReader packet)
         {
             int player = GetLocalPlayer(packet.ReadByte());
-            _duel.Fields[player].LifePoints += packet.ReadInt32();
+            int final = _duel.Fields[player].LifePoints + packet.ReadInt32();
+            if (_debug)
+                Logger.WriteLine("(" + player.ToString() + " got healed , LifePoint left = " + final.ToString() + ")");
+            _duel.Fields[player].LifePoints = final;
         }
 
         private void OnLpUpdate(BinaryReader packet)
@@ -683,12 +686,14 @@ namespace WindBot.Game
 
         private void OnChaining(BinaryReader packet)
         {
-            packet.ReadInt32(); // card id
+            int cardId = packet.ReadInt32();
             int pcc = GetLocalPlayer(packet.ReadByte());
             int pcl = packet.ReadByte();
             int pcs = packet.ReadSByte();
             int subs = packet.ReadSByte();
             ClientCard card = _duel.GetCard(pcc, pcl, pcs, subs);
+            if (card.Id == 0)
+                card.SetId(cardId);
             int cc = GetLocalPlayer(packet.ReadByte());
             if (_debug)
                 if (card != null) Logger.WriteLine("(" + cc.ToString() + " 's " + (card.Name ?? "UnKnowCard") + " activate effect)");
