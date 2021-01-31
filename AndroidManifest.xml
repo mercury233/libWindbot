@@ -1,0 +1,9 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="libwindbot" android:versionCode="1" android:versionName="1.0">
+  <uses-sdk android:minSdkVersion="21" android:targetSdkVersion="26" />
+  <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+  <application android:allowBackup="true">
+    <meta-data android:name="mono.embeddinator.classname" android:value="libwindbot.Native_libWindbot" />
+    <provider android:name="mono.embeddinator.AndroidRuntimeProvider" android:exported="false" android:initOrder="2147483647" android:authorities="${applicationId}.mono.embeddinator.AndroidRuntimeProvider.__mono_init__" />
+  </application>
+</manifest>
