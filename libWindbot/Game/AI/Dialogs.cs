@@ -59,9 +59,7 @@ namespace WindBot.Game.AI
             _game = game;
             DataContractJsonSerializer serializer = new DataContractJsonSerializer(typeof(DialogsData));
             string dialogfilename = game.Dialog;
-            
-            //using (Stream fs = WindBot.Program.Assets.Open("Dialogs/" + dialogfilename + ".json"))
-            using (Stream fs = File.OpenRead(Path.Combine(WindBot.AssetPath, "windbot/Dialogs/", dialogfilename + ".json")))
+            using (FileStream fs = Program.ReadFile("Dialogs", dialogfilename, "json"))
             {
                 DialogsData data = (DialogsData)serializer.ReadObject(fs);
                 _welcome = data.welcome;

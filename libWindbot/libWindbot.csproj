@@ -64,6 +64,7 @@
     <Compile Include="Game\AI\Decks\DragunExecutor.cs" />
     <Compile Include="Game\AI\Decks\DragunityExecutor.cs" />
     <Compile Include="Game\AI\Decks\EvilswarmExecutor.cs" />
+    <Compile Include="Game\AI\Decks\FamiliarPossessedExecutor.cs" />
     <Compile Include="Game\AI\Decks\FrogExecutor.cs" />
     <Compile Include="Game\AI\Decks\GravekeeperExecutor.cs" />
     <Compile Include="Game\AI\Decks\GraydleExecutor.cs" />
@@ -72,6 +73,7 @@
     <Compile Include="Game\AI\Decks\Level8Executor.cs" />
     <Compile Include="Game\AI\Decks\LightswornExecutor.cs" />
     <Compile Include="Game\AI\Decks\LightswornShaddoldinosourExecutor.cs" />
+    <Compile Include="Game\AI\Decks\LuckyExecutor.cs" />
     <Compile Include="Game\AI\Decks\MathMechExecutor.cs" />
     <Compile Include="Game\AI\Decks\MokeyMokeyExecutor.cs" />
     <Compile Include="Game\AI\Decks\MokeyMokeyKingExecutor.cs" />
@@ -107,6 +109,7 @@
     <Compile Include="Game\AI\Enums\ShouldNotBeTarget.cs" />
     <Compile Include="Game\AI\Executor.cs" />
     <Compile Include="Game\AI\ExecutorType.cs" />
+    <Compile Include="Game\AI\HintMsg.cs" />
     <Compile Include="Game\AI\Opcodes.cs" />
     <Compile Include="Game\AI\Zones.cs" />
     <Compile Include="Game\BattlePhase.cs" />
