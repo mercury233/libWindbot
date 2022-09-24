@@ -25,6 +25,9 @@ jobs:
     - name: Restore the application
       run: msbuild $env:Solution_Name /t:Restore /p:Configuration=Release
 
+    - name: Install Mono
+      run: choco install mono --x86
+
     - name: Build!
       run: msbuild $env:Solution_Name /t:Build /p:Configuration=Release
 
