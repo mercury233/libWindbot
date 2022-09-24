@@ -1,0 +1,45 @@
+name: Automated Test Build
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  build:
+    runs-on: windows-2019
+
+    env:
+      Solution_Name: libWindbot.sln
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+
+    - name: Setup MSBuild.exe
+      uses: microsoft/setup-msbuild@v1
+
+    - name: Restore the application
+      run: msbuild $env:Solution_Name /t:Restore /p:Configuration=Release
+
+    - name: Build!
+      run: msbuild $env:Solution_Name /t:Build /p:Configuration=Release
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        path: output\libWindbot.aar
+
+    - name: GitHub Release
+      #if: github.event_name == 'push'
+      uses: marvinpinto/action-automatic-releases@latest
+      with:
+        repo_token: "${{ secrets.GITHUB_TOKEN }}"
+        automatic_release_tag: "latest"
+        prerelease: true
+        title: "Development Build"
+        files: |
+          output/libWindbot.7z
