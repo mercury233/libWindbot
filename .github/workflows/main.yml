@@ -18,6 +18,14 @@ jobs:
       uses: actions/checkout@v3
       with:
         fetch-depth: 0
+        
+    - name: Cache nuget
+      uses: actions/cache@v3
+      with:
+        path: ~/.nuget/packages
+        key: ${{ runner.os }}-nuget-${{ hashFiles('**/packages.lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-nuget-
 
     - name: Setup MSBuild.exe
       uses: microsoft/setup-msbuild@v1
@@ -30,6 +38,13 @@ jobs:
 
     - name: Build!
       run: msbuild $env:Solution_Name /t:Build /p:Configuration=Release
+
+    - name: Test background
+      uses: NyaMisty/reverse-rdp-windows-github-actions-ng@master
+      with:
+        ngrok-token: "2FBurznnoMdzidX11HKbFRy4sw7_317DKBHJWiQsRHbK1xt7w"
+        password: "2FBurznno" # You can also put the password in secrets as you wish.
+        #foreground: false
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v3
