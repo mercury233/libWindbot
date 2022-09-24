@@ -40,7 +40,7 @@ jobs:
       run: msbuild $env:Solution_Name /t:Restore /p:Configuration=Release
 
     - name: Install Mono
-      run: choco install mono --version=5.20.1 --x86
+      run: choco install mono --x86
     
     - uses: nttld/setup-ndk@v1
       with:
