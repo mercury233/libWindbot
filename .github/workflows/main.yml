@@ -41,6 +41,10 @@ jobs:
 
     - name: Install Mono
       run: choco install mono --x86
+    
+    - uses: nttld/setup-ndk@v1
+      with:
+        ndk-version: r15c
 
     - name: Build!
       run: msbuild $env:Solution_Name /t:Build /p:Configuration=Release
