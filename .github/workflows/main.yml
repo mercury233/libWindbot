@@ -28,7 +28,9 @@ jobs:
           ${{ runner.os }}-nuget-
 
     - name: Install Mono
-      run: choco install mono --x86
+      run: |
+        bash -c "curl --retry 5 --connect-timeout 30 --location --remote-header-name --remote-name https://download.mono-project.com/archive/5.20.1/windows-installer/mono-5.20.1-gtksharp-2.12.45-win32-0.msi ; exit 0"
+        msiexec /i mono-5.20.1-gtksharp-2.12.45-win32-0.msi /quiet /norestart
 
     - name: Install NDK
       uses: nttld/setup-ndk@v1
@@ -46,7 +48,7 @@ jobs:
         reg add HKCU\Software\Xamarin\VisualStudio\16.0_a5782d1b\Android /v JavaSdkDirectory /d "C:\hostedtoolcache\windows\Java_Temurin-Hotspot_jdk\8.0.345-1\x64" /f
         reg add HKCU\Software\Xamarin\VisualStudio\16.0_a5782d1b\Android /v AndroidSdkDirectory /d "C:\Android\android-sdk" /f
         reg add HKCU\Software\Xamarin\VisualStudio\16.0_a5782d1b\Android /v AndroidNdkDirectory /d "C:\hostedtoolcache\windows\ndk\r15c\x64" /f
-        xcopy /e /y "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\Common7\IDE\ReferenceAssemblies\Microsoft\Framework\MonoAndroid\v1.0" "C:\Users\runneradmin\.nuget\packages\embeddinator-4000\0.4.0\external\Xamarin.Android\lib\xbuild-frameworks\MonoAndroid\v1.0\"
+        #xcopy /e /y "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\Common7\IDE\ReferenceAssemblies\Microsoft\Framework\MonoAndroid\v1.0" "C:\Users\runneradmin\.nuget\packages\embeddinator-4000\0.4.0\external\Xamarin.Android\lib\xbuild-frameworks\MonoAndroid\v1.0\"
 
     - name: Build!
       run: msbuild $env:Solution_Name /t:Build /p:Configuration=Release
@@ -73,4 +75,4 @@ jobs:
         prerelease: true
         title: "Development Build"
         files: |
-          output/libWindbot.7z
+          output/libWindbot.aar
