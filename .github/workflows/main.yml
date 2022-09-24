@@ -19,12 +19,6 @@ jobs:
       with:
         fetch-depth: 0
 
-    - uses: actions/setup-java@v3
-      with:
-        distribution: 'temurin'
-        java-version: '8'
-        architecture: x86
-
     - name: Cache nuget
       uses: actions/cache@v3
       with:
@@ -33,18 +27,25 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-nuget-
 
+    - name: Install Mono
+      run: choco install mono --x86
+
+    - name: Install NDK
+      uses: nttld/setup-ndk@v1
+      with:
+        ndk-version: r15c
+
+    - name: Reg path
+      run: |
+        reg add HKCU\Software\Xamarin\VisualStudio\16.0_a5782d1b\Android /v JavaSdkDirectory /d "C:\hostedtoolcache\windows\Java_Temurin-Hotspot_jdk\8.0.345-1\x64" /f
+        reg add HKCU\Software\Xamarin\VisualStudio\16.0_a5782d1b\Android /v AndroidSdkDirectory /d "C:\Android\android-sdk" /f
+        reg add HKCU\Software\Xamarin\VisualStudio\16.0_a5782d1b\Android /v AndroidNdkDirectory /d "C:\hostedtoolcache\windows\ndk\r15c\x64" /f
+
     - name: Setup MSBuild.exe
       uses: microsoft/setup-msbuild@v1
 
     - name: Restore the application
       run: msbuild $env:Solution_Name /t:Restore /p:Configuration=Release
-
-    - name: Install Mono
-      run: choco install mono --x86
-    
-    - uses: nttld/setup-ndk@v1
-      with:
-        ndk-version: r15c
 
     - name: Build!
       run: msbuild $env:Solution_Name /t:Build /p:Configuration=Release
