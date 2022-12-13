@@ -71,6 +71,7 @@
     <Compile Include="Game\AI\Decks\GraydleExecutor.cs" />
     <Compile Include="Game\AI\Decks\GrenMajuThunderBoarderExecutor.cs" />
     <Compile Include="Game\AI\Decks\HorusExecutor.cs" />
+    <Compile Include="Game\AI\Decks\KashtiraExecutor.cs" />
     <Compile Include="Game\AI\Decks\Level8Executor.cs" />
     <Compile Include="Game\AI\Decks\LightswornExecutor.cs" />
     <Compile Include="Game\AI\Decks\LightswornShaddoldinosourExecutor.cs" />
