@@ -65,6 +65,7 @@
     <Compile Include="Game\AI\Decks\DragunExecutor.cs" />
     <Compile Include="Game\AI\Decks\DragunityExecutor.cs" />
     <Compile Include="Game\AI\Decks\EvilswarmExecutor.cs" />
+    <Compile Include="Game\AI\Decks\ExosisterExecutor.cs" />
     <Compile Include="Game\AI\Decks\FamiliarPossessedExecutor.cs" />
     <Compile Include="Game\AI\Decks\FrogExecutor.cs" />
     <Compile Include="Game\AI\Decks\GravekeeperExecutor.cs" />
