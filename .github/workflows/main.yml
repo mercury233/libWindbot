@@ -33,13 +33,13 @@ jobs:
     
     - name: Install Mono
       run: |
-        bash -c "curl --retry 5 --connect-timeout 30 --location --remote-header-name --remote-name https://download.mono-project.com/archive/5.12.0/windows-installer/mono-5.12.0-gtksharp-2.12.45-win32-0.msi ; exit 0"
-        cmd /c start /wait msiexec /i mono-5.12.0-gtksharp-2.12.45-win32-0.msi /quiet /norestart
+        bash -c "curl --retry 5 --connect-timeout 30 --location --remote-header-name --remote-name https://download.mono-project.com/archive/6.12.0/windows-installer/mono-6.12.0-gtksharp-2.12.45-win32-0.msi ; exit 0"
+        cmd /c start /wait msiexec /i mono-6.12.0-gtksharp-2.12.45-win32-0.msi /quiet /norestart
 
     - name: gugug
       run: |
         dir "C:\Program Files (x86)\Mono\lib\mono\4.5"
-        #dir "C:\Program Files (x86)\Reference Assemblies\Microsoft\Framework\MonoAndroid\"
+        #dir "C:\Program Files\Reference Assemblies\Microsoft\Framework\MonoAndroid\"
 
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
