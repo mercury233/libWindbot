@@ -121,12 +121,18 @@ namespace WindBot.Game.AI
             public const int RoyalDecreel = 51452091;
             public const int NaturiaBeast = 33198837;
             public const int AntiSpellFragrance = 58921041;
+            
+            public const int VaylantzWorld_ShinraBansho = 49568943;
+            public const int VaylantzWorld_KonigWissen = 75952542;
+            public const int DivineArsenalAAZEUS_SkyThunder = 90448279;
         }
 
         protected DefaultExecutor(GameAI ai, Duel duel)
             : base(ai, duel)
         {
             AddExecutor(ExecutorType.Activate, _CardId.ChickenGame, DefaultChickenGame);
+            AddExecutor(ExecutorType.Activate, _CardId.VaylantzWorld_ShinraBansho, DefaultVaylantzWorld_ShinraBansho);
+            AddExecutor(ExecutorType.Activate, _CardId.VaylantzWorld_KonigWissen, DefaultVaylantzWorld_KonigWissen);
             AddExecutor(ExecutorType.Activate, _CardId.SantaClaws);
         }
 
@@ -311,6 +317,40 @@ namespace WindBot.Game.AI
         public override bool OnSelectMonsterSummonOrSet(ClientCard card)
         {
             return card.Level <= 4 && Bot.GetMonsters().Count(m => m.IsFaceup()) == 0 && Util.IsAllEnemyBetterThanValue(card.Attack, true);
+        }
+
+        /// <summary>
+        /// Called when the AI has to select one or more cards.
+        /// </summary>
+        /// <param name="cards">List of available cards.</param>
+        /// <param name="min">Minimal quantity.</param>
+        /// <param name="max">Maximal quantity.</param>
+        /// <param name="hint">The hint message of the select.</param>
+        /// <param name="cancelable">True if you can return an empty list.</param>
+        /// <returns>A new list containing the selected cards.</returns>
+        public override IList<ClientCard> OnSelectCard(IList<ClientCard> cards, int min, int max, int hint, bool cancelable)
+        {
+            // wordaround for Dogmatika Alba Zoa
+            int albaZoaCount = Bot.ExtraDeck.Count / 2;
+            if (!cancelable && min == albaZoaCount && max == albaZoaCount
+                && Duel.Player == 1 && (Duel.Phase == DuelPhase.Main1 || Duel.Phase == DuelPhase.Main2) && cards.All(card =>
+                card.Controller == 0 && (card.Location == CardLocation.Hand || card.Location == CardLocation.Extra)))
+            {
+                Logger.DebugWriteLine("Dogmatika Alba Zoa solved");
+                List<ClientCard> extraDeck = new List<ClientCard>(Bot.ExtraDeck);
+                int shuffleCount = extraDeck.Count;
+                while (shuffleCount-- > 1)
+                {
+                    int index = Program.Rand.Next(extraDeck.Count);
+                    ClientCard tempCard = extraDeck[shuffleCount];
+                    extraDeck[shuffleCount] = extraDeck[index];
+                    extraDeck[index] = tempCard;
+                }
+                
+                return Util.CheckSelectCount(extraDeck, cards, min, max);
+            }
+
+            return null;
         }
 
         /// <summary>
@@ -793,7 +833,8 @@ namespace WindBot.Game.AI
                 _CardId.BlackRoseDragon,
                 _CardId.JudgmentDragon,
                 _CardId.TopologicTrisbaena,
-                _CardId.EvenlyMatched
+                _CardId.EvenlyMatched,
+                _CardId.DivineArsenalAAZEUS_SkyThunder
             };
             int[] destroyAllOpponentSpellList =
             {
@@ -1181,6 +1222,56 @@ namespace WindBot.Game.AI
             }
 
             return Util.IsTurn1OrMain2();
+        }
+
+        /// <summary>
+        /// Always activate
+        /// </summary>
+        protected bool DefaultVaylantzWorld_ShinraBansho()
+        {
+            if (DefaultSpellWillBeNegated()) {
+                return false;
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// Select enemy's best monster
+        /// </summary>
+        protected bool DefaultVaylantzWorld_KonigWissen()
+        {
+            if (DefaultSpellWillBeNegated()) {
+                return false;
+            }
+
+            List<ClientCard> monsters = Enemy.GetMonsters();
+            if (monsters.Count == 0) {
+                return false;
+            }
+
+            List<ClientCard> targetList = new List<ClientCard>();
+            List<ClientCard> floodgateCards = monsters
+                .Where(card => card?.Data != null && card.IsFloodgate() && card.IsFaceup() && !card.IsShouldNotBeTarget())
+                .OrderBy(card => card.Attack).ToList();
+            List<ClientCard> dangerousCards = monsters
+                .Where(card => card?.Data != null && card.IsMonsterDangerous() && card.IsFaceup() && !card.IsShouldNotBeTarget())
+                .OrderBy(card => card.Attack).ToList();
+            List<ClientCard> attackOrderedCards = monsters
+                .Where(card => card?.Data != null && card.HasType(CardType.Monster) && card.IsFaceup() && card.IsShouldNotBeTarget())
+                .OrderBy(card => card.Attack).ToList();
+
+            targetList.AddRange(floodgateCards);
+            targetList.AddRange(dangerousCards);
+            targetList.AddRange(attackOrderedCards);
+
+            if (targetList?.Count > 0)
+            {
+                AI.SelectCard(targetList);
+                return true;
+            }
+
+            return false;
         }
     }
 }

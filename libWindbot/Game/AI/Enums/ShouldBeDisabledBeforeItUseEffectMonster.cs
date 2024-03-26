@@ -56,6 +56,13 @@
         ShiranuiSolitaire = 94801854,
         Mixeroid = 71340250,
         LonefireBlossom = 48686504,
-        BrotherhoodoftheFireFist_Leopard = 39699564
+        BrotherhoodoftheFireFist_Leopard = 39699564,
+        SpringansPedor = 56818977,
+        GizmekNaganakitheSunriseSignaler = 96399967,
+        MyutantMutant = 26561172,
+        ThreeEyedGhost = 31464658,
+        UrsarcticPolarStar = 62714453,
+        BattlinBoxerPromoter = 83315222,
+        TGRocketSalamander = 77392987
     }
 }
