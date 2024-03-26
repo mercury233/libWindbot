@@ -55,7 +55,7 @@ jobs:
         $vsRandomID = $dir[0].Name
         reg add HKCU\Software\Xamarin\VisualStudio\16.0_${vsRandomID}\Android /v JavaSdkDirectory /d "C:\Program Files\Eclipse Foundation\jdk-8.0.302.8-hotspot" /f
         reg add HKCU\Software\Xamarin\VisualStudio\16.0_${vsRandomID}\Android /v AndroidSdkDirectory /d "C:\Android\android-sdk" /f
-        reg add HKCU\Software\Xamarin\VisualStudio\16.0_${vsRandomID}\Android /v AndroidNdkDirectory /d "C:\hostedtoolcache\windows\ndk\r15c\x64" /f
+        reg add HKCU\Software\Xamarin\VisualStudio\16.0_${vsRandomID}\Android /v AndroidNdkDirectory /d "C:\hostedtoolcache\windows\ndk\r15c" /f
         xcopy /e /y "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\Common7\IDE\ReferenceAssemblies\Microsoft\Framework\MonoAndroid\v1.0" "C:\Users\runneradmin\.nuget\packages\embeddinator-4000\0.4.0\external\Xamarin.Android\lib\xbuild-frameworks\MonoAndroid\v1.0\"
 
     - name: Install NDK r15c
