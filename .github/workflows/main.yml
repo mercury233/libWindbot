@@ -33,8 +33,8 @@ jobs:
     
     - name: Install Mono
       run: |
-        bash -c "curl --retry 5 --connect-timeout 30 --location --remote-header-name --remote-name https://download.mono-project.com/archive/6.12.0/windows-installer/mono-6.12.0-gtksharp-2.12.45-win32-0.msi ; exit 0"
-        msiexec /i mono-6.12.0-gtksharp-2.12.45-win32-0.msi /quiet /norestart
+        bash -c "curl --retry 5 --connect-timeout 30 --location --remote-header-name --remote-name https://download.mono-project.com/archive/5.12.0/windows-installer/mono-5.12.0-gtksharp-2.12.45-win32-0.msi ; exit 0"
+        msiexec /i mono-5.12.0-gtksharp-2.12.45-win32-0.msi /quiet /norestart
 
     - name: gugug
       run: |
