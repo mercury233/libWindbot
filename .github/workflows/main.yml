@@ -33,10 +33,16 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
+    - name: gu
+      run: dir C:\Android\android-sdk\platforms
+
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
       with:
         packages: 'platforms;android-25'
+
+    - name: gugu
+      run: dir C:\Android\android-sdk\platforms
     
     - name: Install Mono
       run: |
