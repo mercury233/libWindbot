@@ -27,13 +27,18 @@ jobs:
     #    restore-keys: |
     #      ${{ runner.os }}-nuget-
 
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v3
+      with:
+        packages: 'platforms;android-25'
+    
     - name: Install Mono
       run: |
         bash -c "curl --retry 5 --connect-timeout 30 --location --remote-header-name --remote-name https://download.mono-project.com/archive/5.12.0/windows-installer/mono-5.12.0-gtksharp-2.12.45-win32-0.msi ; exit 0"
         msiexec /i mono-5.12.0-gtksharp-2.12.45-win32-0.msi /quiet /norestart
 
-    - name: Install Android SDK Platform 25
-      run: cmd.exe /c C:\Users\runneradmin\AppData\Local\Android\Sdk\tools\bin\sdkmanager.bat "platforms;android-25"
+    #- name: Install Android SDK Platform 25
+    #  run: cmd.exe /c C:\Users\runneradmin\AppData\Local\Android\Sdk\tools\bin\sdkmanager.bat "platforms;android-25"
 
     - name: Install NDK r15c
       uses: nttld/setup-ndk@v1
