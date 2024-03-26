@@ -59,7 +59,9 @@ jobs:
         xcopy /e /y "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\Common7\IDE\ReferenceAssemblies\Microsoft\Framework\MonoAndroid\v1.0" "C:\Users\runneradmin\.nuget\packages\embeddinator-4000\0.4.0\external\Xamarin.Android\lib\xbuild-frameworks\MonoAndroid\v1.0\"
 
     - name: Fixed E4K
-      run: Invoke-WebRequest -Uri "https://github.com/mercury233/libWindbot/files/14755286/tools.zip" -OutFile "fixed-e4k-tools.zip" | Expand-Archive -DestinationPath "C:\Users\runneradmin\.nuget\packages\embeddinator-4000\0.4.0\" -Force
+      run: |
+        Invoke-WebRequest -Uri "https://github.com/mercury233/libWindbot/files/14755286/tools.zip" -OutFile "fixed-e4k-tools.zip"
+        Expand-Archive -Path "fixed-e4k-tools.zip" -DestinationPath "C:\Users\runneradmin\.nuget\packages\embeddinator-4000\0.4.0\" -Force
  
     - name: Install NDK r15c
       uses: nttld/setup-ndk@v1
