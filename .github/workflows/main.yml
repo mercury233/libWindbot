@@ -28,11 +28,6 @@ jobs:
     - name: gu
       run: dir C:\Android\android-sdk\platforms
 
-    - name: Setup Android SDK
-      uses: android-actions/setup-android@v3
-      with:
-        packages: 'platforms;android-25 platforms;android-24'
-
     - name: gugu
       run: dir C:\Android\android-sdk\platforms
     
@@ -40,6 +35,16 @@ jobs:
       run: |
         bash -c "curl --retry 5 --connect-timeout 30 --location --remote-header-name --remote-name https://download.mono-project.com/archive/6.12.0/windows-installer/mono-6.12.0-gtksharp-2.12.45-win32-0.msi ; exit 0"
         msiexec /i mono-6.12.0-gtksharp-2.12.45-win32-0.msi /quiet /norestart
+
+    - name: gugug
+      run: |
+        dir "C:\Program Files (x86)\Mono\lib\mono\"
+        dir "C:\Program Files (x86)\Reference Assemblies\Microsoft\Framework\MonoAndroid\"
+
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v3
+      with:
+        packages: 'platforms;android-25 platforms;android-24'
 
     - name: Reg path
       run: |
