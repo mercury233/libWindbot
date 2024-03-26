@@ -72,13 +72,13 @@ jobs:
         reg add HKCU\Software\Xamarin\VisualStudio\16.0_${vsRandomID}\Android /v JavaSdkDirectory /d "C:\Program Files\Eclipse Foundation\jdk-8.0.302.8-hotspot" /f
         reg add HKCU\Software\Xamarin\VisualStudio\16.0_${vsRandomID}\Android /v AndroidSdkDirectory /d "C:\Android\android-sdk" /f
         reg add HKCU\Software\Xamarin\VisualStudio\16.0_${vsRandomID}\Android /v AndroidNdkDirectory /d "C:\hostedtoolcache\windows\ndk\r15c\x64" /f
-        xcopy "C:\Program Files (x86)\Mono\lib\mono\4.5\mscorlib.dll" "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\Common7\IDE\ReferenceAssemblies\Microsoft\Framework\MonoAndroid\v1.0\" /y /i
-        xcopy "C:\Program Files (x86)\Mono\lib\mono\4.5\System.dll" "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\Common7\IDE\ReferenceAssemblies\Microsoft\Framework\MonoAndroid\v1.0\" /y /i 
-        xcopy "C:\Program Files (x86)\Mono\lib\mono\4.5\System.Configuration.dll" "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\Common7\IDE\ReferenceAssemblies\Microsoft\Framework\MonoAndroid\v1.0\" /y /i 
+        Copy-Item "C:\Program Files (x86)\Mono\lib\mono\4.5\mscorlib.dll" -Destination "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\Common7\IDE\ReferenceAssemblies\Microsoft\Framework\MonoAndroid\v1.0\" -Force
+        Copy-Item "C:\Program Files (x86)\Mono\lib\mono\4.5\System.dll" -Destination "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\Common7\IDE\ReferenceAssemblies\Microsoft\Framework\MonoAndroid\v1.0\" -Force
+        Copy-Item "C:\Program Files (x86)\Mono\lib\mono\4.5\System.Configuration.dll" "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\Common7\IDE\ReferenceAssemblies\Microsoft\Framework\MonoAndroid\v1.0\" -Force
         # xcopy /e /y "C:\Program Files (x86)\Reference Assemblies\Microsoft\Framework\MonoAndroid\v1.0\mscorlib.dll" "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\Common7\IDE\ReferenceAssemblies\Microsoft\Framework\MonoAndroid\v1.0\mscorlib.dll"
-        xcopy "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\Common7\IDE\ReferenceAssemblies\Microsoft\Framework\MonoAndroid\v1.0\mscorlib.dll" "C:\Users\runneradmin\.nuget\packages\embeddinator-4000\0.4.0\external\Xamarin.Android\lib\xbuild-frameworks\MonoAndroid\v1.0\" /y /i 
-        xcopy "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\Common7\IDE\ReferenceAssemblies\Microsoft\Framework\MonoAndroid\v1.0\System.dll" "C:\Users\runneradmin\.nuget\packages\embeddinator-4000\0.4.0\external\Xamarin.Android\lib\xbuild-frameworks\MonoAndroid\v1.0\" /y /i 
-        xcopy "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\Common7\IDE\ReferenceAssemblies\Microsoft\Framework\MonoAndroid\v1.0\System.Configuration.dll" "C:\Users\runneradmin\.nuget\packages\embeddinator-4000\0.4.0\external\Xamarin.Android\lib\xbuild-frameworks\MonoAndroid\v1.0\" /y /i
+        Copy-Item "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\Common7\IDE\ReferenceAssemblies\Microsoft\Framework\MonoAndroid\v1.0\mscorlib.dll" -Destination "C:\Users\runneradmin\.nuget\packages\embeddinator-4000\0.4.0\external\Xamarin.Android\lib\xbuild-frameworks\MonoAndroid\v1.0\" -Force
+        Copy-Item "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\Common7\IDE\ReferenceAssemblies\Microsoft\Framework\MonoAndroid\v1.0\System.dll" -Destination "C:\Users\runneradmin\.nuget\packages\embeddinator-4000\0.4.0\external\Xamarin.Android\lib\xbuild-frameworks\MonoAndroid\v1.0\" -Force
+        Copy-Item "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\Common7\IDE\ReferenceAssemblies\Microsoft\Framework\MonoAndroid\v1.0\System.Configuration.dll" -Destination "C:\Users\runneradmin\.nuget\packages\embeddinator-4000\0.4.0\external\Xamarin.Android\lib\xbuild-frameworks\MonoAndroid\v1.0\" -Force
 
     #- name: Fixed E4K
     #  run: |
