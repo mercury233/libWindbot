@@ -37,6 +37,9 @@ jobs:
       with:
         ndk-version: r15c
 
+    - name: Install Android SDK Platform 25
+      run: C:\Users\runneradmin\AppData\Local\Android\Sdk\tools\bin\sdkmanager.bat "platforms;android-25"
+
     - name: Setup MSBuild.exe
       uses: microsoft/setup-msbuild@v1
 
