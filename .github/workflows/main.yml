@@ -38,7 +38,8 @@ jobs:
 
     - name: gugug
       run: |
-        dir "C:\Program Files (x86)\Mono\"
+        dir "C:\Program Files\Mono\"
+        dir "C:\Program Files (x86)\Mono\lib\mono\4.5"
         dir "C:\Program Files (x86)\Reference Assemblies\Microsoft\Framework\MonoAndroid\"
 
     - name: Setup Android SDK
