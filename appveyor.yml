@@ -38,7 +38,7 @@ build:
 
 after_build:
   - mv output\libWindbot.aar libWindbot.aar
-  - za a -tzip libWindbot.aar AndroidManifest.xml
+  - #7z a -tzip libWindbot.aar AndroidManifest.xml
 
   - git config --global credential.helper store
   - ps: Add-Content "$env:USERPROFILE\.git-credentials" "https://$($env:access_token):x-oauth-basic@github.com`n"
@@ -70,5 +70,4 @@ on_finish:
 
 cache:
   - mono-5.12.0-gtksharp-2.12.45-win32-0.msi
-  - sdk-tools-windows-4333796.zip
   - android-ndk-r15c-windows-x86_64.zip
