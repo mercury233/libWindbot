@@ -22,12 +22,12 @@ install:
   - nuget restore
 
   - ps: |
-    $iniFile = "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\Common7\IDE\devenv.isolation.ini"
-    $pattern = '^\s*InstallationID\s*=\s*(.*)$'
-    $iniContent = Get-Content -Path $iniFile
-    $match = $iniContent | Where-Object { $_ -match $pattern }
-    $InstallationID = $matches[1]
-    reg add HKCU\Software\Xamarin\VisualStudio\15.0_${InstallationID}\Android /v AndroidNdkDirectory /d "C:\android-ndk-r15c" /f
+    $iniFile = "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\Common7\IDE\devenv.isolation.ini" ;
+    $pattern = '^\s*InstallationID\s*=\s*(.*)$' ;
+    $iniContent = Get-Content -Path $iniFile ;
+    $match = $iniContent | Where-Object { $_ -match $pattern } ;
+    $InstallationID = $matches[1] ;
+    reg add HKCU\Software\Xamarin\VisualStudio\15.0_${InstallationID}\Android /v AndroidNdkDirectory /d "C:\android-ndk-r15c" /f ;
     Copy-Item "C:\Program Files (x86)\Mono\lib\mono\4.5\mscorlib.dll" -Destination "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\Common7\IDE\ReferenceAssemblies\Microsoft\Framework\MonoAndroid\v1.0\" -Force
   
 configuration: Release
@@ -45,7 +45,10 @@ after_build:
   - bash -c "git tag -d latest ; exit 0"
   - git tag latest HEAD
   - git push -f origin latest
-  - ps: $url = 'https://api.github.com/repos/mercury233/libWindbot/releases/' ; $j = Invoke-RestMethod ($url+'latest') ; Invoke-RestMethod ($url+$j.id) -Method Delete -Headers @{"Authorization" = "Bearer $($env:access_token)"}
+  - ps: |
+    $url = 'https://api.github.com/repos/mercury233/libWindbot/releases/' ;
+    $j = Invoke-RestMethod ($url+'latest') ;
+    Invoke-RestMethod ($url+$j.id) -Method Delete -Headers @{"Authorization" = "Bearer $($env:access_token)"}
 
 test: off
 
