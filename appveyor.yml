@@ -12,7 +12,7 @@ install:
 
   - bash -c "curl --retry 5 --connect-timeout 30 --location --remote-header-name --remote-name https://dl.google.com/android/repository/sdk-tools-windows-4333796.zip ; exit 0"
   - 7z x sdk-tools-windows-4333796.zip -o"C:\Program Files (x86)\Android\android-sdk\tools"
-  - 'C:\Program Files (x86)\Android\android-sdk\tools\tools\bin\sdkmanager' 'platforms;android-25 platforms;android-24'
+  - cmd /c "C:\Program Files (x86)\Android\android-sdk\tools\tools\bin\sdkmanager" "platforms;android-25 platforms;android-24"
   
   - bash -c "curl --retry 5 --connect-timeout 30 --location --remote-header-name --remote-name https://dl.google.com/android/repository/android-ndk-r15c-windows-x86_64.zip ; exit 0"
   - 7z x android-ndk-r15c-windows-x86_64.zip -o'C:'
