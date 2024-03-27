@@ -1,6 +1,6 @@
 version: '{build}'
 skip_tags: true
-image: Visual Studio 2015
+image: Visual Studio 2017
 
 environment:
   access_token:
@@ -13,11 +13,11 @@ install:
   - bash -c "curl --retry 5 --connect-timeout 30 --location --remote-header-name --remote-name https://download.mono-project.com/archive/5.12.0/windows-installer/mono-5.12.0-gtksharp-2.12.45-win32-0.msi ; exit 0"
   - start /wait msiexec /i mono-5.12.0-gtksharp-2.12.45-win32-0.msi /quiet /norestart
 
-  - bash -c "curl --retry 5 --connect-timeout 30 --location --remote-header-name --remote-name https://dl.google.com/android/repository/sdk-tools-windows-4333796.zip ; exit 0"
-  - 7z x sdk-tools-windows-4333796.zip -aoa -o"C:\Program Files (x86)\Android\android-sdk"
-  - cmd /c "yes | "C:\Program Files (x86)\Android\android-sdk\tools\bin\sdkmanager" --licenses > nul"
-  - cmd /c ""C:\Program Files (x86)\Android\android-sdk\tools\bin\sdkmanager" "platforms;android-25""
-  - cmd /c ""C:\Program Files (x86)\Android\android-sdk\tools\bin\sdkmanager" "platforms;android-24""
+  #- bash -c "curl --retry 5 --connect-timeout 30 --location --remote-header-name --remote-name https://dl.google.com/android/repository/sdk-tools-windows-4333796.zip ; exit 0"
+  #- 7z x sdk-tools-windows-4333796.zip -aoa -o"C:\Program Files (x86)\Android\android-sdk"
+  #- cmd /c "yes | "C:\Program Files (x86)\Android\android-sdk\tools\bin\sdkmanager" --licenses > nul"
+  #- cmd /c ""C:\Program Files (x86)\Android\android-sdk\tools\bin\sdkmanager" "platforms;android-25""
+  #- cmd /c ""C:\Program Files (x86)\Android\android-sdk\tools\bin\sdkmanager" "platforms;android-24""
    
   - nuget restore
   
