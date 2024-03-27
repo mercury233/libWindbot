@@ -1,0 +1,54 @@
+version: '{build}'
+skip_tags: true
+image: Visual Studio 2015
+
+environment:
+  access_token:
+    secure: QRJ97uSkoKE5kasZbXJMkRXX9VZYA4jUIl1YgkqMT+KE2hvSGds459bxYHQvvwFP
+
+install:
+  - bash -c "curl --retry 5 --connect-timeout 30 --location --remote-header-name --remote-name https://download.mono-project.com/archive/5.12.0/windows-installer/mono-5.12.0-gtksharp-2.12.45-win32-0.msi ; exit 0"
+  - start /wait msiexec /i mono-5.12.0-gtksharp-2.12.45-win32-0.msi /quiet /norestart
+  
+  - sdkmanager "platforms;android-25 platforms;android-24"
+
+  - bash -c "curl --retry 5 --connect-timeout 30 --location --remote-header-name --remote-name https://dl.google.com/android/repository/android-ndk-r15c-windows-x86_64.zip ; exit 0"
+  - 7z x android-ndk-r15c-windows-x86_64.zip -o'C:'
+
+  - nuget restore
+  
+configuration: Release
+
+build: 
+    project: libWindbot.sln
+    parallel: true
+
+after_build:
+  - mv output\libWindbot.aar libWindbot.aar
+  - za a -tzip libWindbot.aar AndroidManifest.xml
+
+  - git config --global credential.helper store
+  - ps: Add-Content "$env:USERPROFILE\.git-credentials" "https://$($env:access_token):x-oauth-basic@github.com`n"
+  - bash -c "git tag -d latest ; exit 0"
+  - git tag latest HEAD
+  - git push -f origin latest
+  - ps: $url = 'https://api.github.com/repos/mercury233/libWindbot/releases/' ; $j = Invoke-RestMethod ($url+'latest') ; Invoke-RestMethod ($url+$j.id) -Method Delete -Headers @{"Authorization" = "Bearer $($env:access_token)"}
+
+test: off
+
+artifacts:
+  - path: libWindbot.aar
+    name: libWindbot
+
+deploy:
+    release: latest
+    description: 'Automatic build by Appveyor.'
+    provider: GitHub
+    auth_token: $(access_token)
+    force_update: true
+    on:
+        branch: test
+
+cache:
+  - mono-5.12.0-gtksharp-2.12.45-win32-0.msi
+  - android-ndk-r15c-windows-x86_64.zip
