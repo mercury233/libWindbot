@@ -1,0 +1,73 @@
+version: '{build}'
+skip_tags: true
+image: Visual Studio 2017
+
+environment:
+  access_token:
+    secure: QRJ97uSkoKE5kasZbXJMkRXX9VZYA4jUIl1YgkqMT+KE2hvSGds459bxYHQvvwFP
+
+install:
+  - bash -c "curl --retry 5 --connect-timeout 30 --location --remote-header-name --remote-name https://dl.google.com/android/repository/android-ndk-r15c-windows-x86_64.zip ; exit 0"
+  - 7z x android-ndk-r15c-windows-x86_64.zip -o"C:\"
+
+  - bash -c "curl --retry 5 --connect-timeout 30 --location --remote-header-name --remote-name https://download.mono-project.com/archive/5.12.0/windows-installer/mono-5.12.0-gtksharp-2.12.45-win32-0.msi ; exit 0"
+  - start /wait msiexec /i mono-5.12.0-gtksharp-2.12.45-win32-0.msi /quiet /norestart
+
+  #- bash -c "curl --retry 5 --connect-timeout 30 --location --remote-header-name --remote-name https://dl.google.com/android/repository/sdk-tools-windows-4333796.zip ; exit 0"
+  #- 7z x sdk-tools-windows-4333796.zip -aoa -o"C:\Program Files (x86)\Android\android-sdk"
+  #- cmd /c "yes | "C:\Program Files (x86)\Android\android-sdk\tools\bin\sdkmanager" --licenses > nul"
+  #- cmd /c ""C:\Program Files (x86)\Android\android-sdk\tools\bin\sdkmanager" "platforms;android-25""
+  #- cmd /c ""C:\Program Files (x86)\Android\android-sdk\tools\bin\sdkmanager" "platforms;android-24""
+   
+  - nuget restore
+
+  - ps: |
+      $iniFile = "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\Common7\IDE\devenv.isolation.ini" ;
+      $pattern = '^\s*InstallationID\s*=\s*(.*)$' ;
+      $iniContent = Get-Content -Path $iniFile ;
+      $match = $iniContent | Where-Object { $_ -match $pattern } ;
+      $InstallationID = $matches[1] ;
+      reg add HKCU\Software\Xamarin\VisualStudio\15.0_${InstallationID}\Android /v AndroidNdkDirectory /d "C:\android-ndk-r15c" /f ;
+      Copy-Item "C:\Program Files (x86)\Mono\lib\mono\4.5\mscorlib.dll" -Destination "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\Common7\IDE\ReferenceAssemblies\Microsoft\Framework\MonoAndroid\v1.0\" -Force
+  
+configuration: Release
+
+build: 
+    project: libWindbot.sln
+    parallel: true
+
+after_build:
+  - mv output\libWindbot.aar libWindbot.aar
+  - 7z a -tzip libWindbot.aar AndroidManifest.xml
+
+  - git config --global credential.helper store
+  - ps: Add-Content "$env:USERPROFILE\.git-credentials" "https://$($env:access_token):x-oauth-basic@github.com`n"
+  - bash -c "git tag -d latest ; exit 0"
+  - git tag latest HEAD
+  - git push -f origin latest
+  - ps: |
+      $url = 'https://api.github.com/repos/mercury233/libWindbot/releases/' ;
+      $j = Invoke-RestMethod ($url+'latest') ;
+      Invoke-RestMethod ($url+$j.id) -Method Delete -Headers @{"Authorization" = "Bearer $($env:access_token)"}
+
+test: off
+
+artifacts:
+  - path: libWindbot.aar
+    name: libWindbot
+
+deploy:
+    release: latest
+    description: 'Automatic build by Appveyor.'
+    provider: GitHub
+    auth_token: $(access_token)
+    force_update: true
+    on:
+        branch: master
+
+#on_finish:
+#  - ps: $blockRdp = $true; iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
+
+cache:
+  - mono-5.12.0-gtksharp-2.12.45-win32-0.msi
+  - android-ndk-r15c-windows-x86_64.zip
