@@ -192,6 +192,7 @@ namespace WindBot.Game.AI.Decks
         {
             if (Card.Location == CardLocation.MonsterZone)
             {
+                if (DefaultCheckWhetherCardIsNegated(Card)) return false;
                 AI.SelectCard(Monsters.TimeThiefCronocorder);
                 AI.SelectCard(Monsters.TimeThiefWinder);
                 return true;
@@ -370,6 +371,7 @@ namespace WindBot.Game.AI.Decks
         }
         private bool ThunderKingRaiOheff()
         {
+            if (DefaultOnlyHorusSpSummoning()) return false;
             if (Duel.SummoningCards.Count > 0)
             {
                 foreach (ClientCard m in Duel.SummoningCards)

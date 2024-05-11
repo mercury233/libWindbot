@@ -25,6 +25,18 @@ namespace WindBot.Game
             _activatedCards = new Dictionary<int, int>();
         }
 
+        private void CheckSurrender()
+        {
+            foreach (CardExecutor exec in Executor.Executors)
+            {
+                if (exec.Type == ExecutorType.Surrender && exec.Func())
+                {
+                    _dialogs.SendSurrender();
+                    Game.Surrender();
+                }
+            }
+        }
+
         /// <summary>
         /// Called when the AI got the error message.
         /// </summary>
@@ -117,6 +129,12 @@ namespace WindBot.Game
                 _dialogs.SendNewTurn();
             }
             Executor.OnNewPhase();
+            CheckSurrender();
+        }
+
+        public void OnMove(ClientCard card, int previousControler, int previousLocation, int currentControler, int currentLocation)
+        {
+            Executor.OnMove(card, previousControler, previousLocation, currentControler, currentLocation);
         }
 
         /// <summary>
@@ -125,6 +143,7 @@ namespace WindBot.Game
         public void OnDirectAttack(ClientCard card)
         {
             _dialogs.SendOnDirectAttack(card.Name);
+            CheckSurrender();
         }
 
         /// <summary>
@@ -136,6 +155,11 @@ namespace WindBot.Game
         {
             Executor.OnChaining(player,card);
         }
+
+        public void OnChainSolved(int chainIndex)
+        {
+            Executor.OnChainSolved(chainIndex);
+        }
         
         /// <summary>
         /// Called when a chain has been solved.
@@ -145,6 +169,17 @@ namespace WindBot.Game
             m_selector.Clear();
             m_selector_pointer = -1;
             Executor.OnChainEnd();
+            CheckSurrender();
+        }
+
+        /// <summary>
+        /// Called when receiving annouce
+        /// </summary>
+        /// <param name="player">Player who announce.</param>
+        /// <param name="data">Annouced info.</param>
+        public void OnReceivingAnnouce(int player, int data)
+        {
+            Executor.OnReceivingAnnouce(player, data);
         }
 
         /// <summary>
@@ -295,6 +330,8 @@ namespace WindBot.Game
             // Always select the first available cards and choose the minimum.
             IList<ClientCard> selected = new List<ClientCard>();
 
+            if (hint == HintMsg.AttackTarget && cancelable) return selected;
+
             if (cards.Count >= min)
             {
                 for (int i = 0; i < min; ++i)
@@ -400,6 +437,7 @@ namespace WindBot.Game
         public MainPhaseAction OnSelectIdleCmd(MainPhase main)
         {
             Executor.SetMain(main);
+            CheckSurrender();
             foreach (CardExecutor exec in Executor.Executors)
             {
             	if (exec.Type == ExecutorType.GoToEndPhase && main.CanEndPhase && exec.Func()) // check if should enter end phase directly

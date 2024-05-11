@@ -164,7 +164,7 @@ namespace WindBot.Game.AI.Decks
         };
         List<int> ExosisterSpellTrapList = new List<int>{CardId.ExosisterPax, CardId.ExosisterArment, CardId.ExosisterVadis, CardId.ExosisterReturnia};
 
-        Dictionary<int, int> calledbytheGraveCount = new Dictionary<int, int>();
+        List<int> currentNegatingIdList = new List<int>();
         bool enemyActivateMaxxC = false;
         bool enemyActivateLockBird = false;
         bool enemyMoveGrave = false;
@@ -410,11 +410,9 @@ namespace WindBot.Game.AI.Decks
         /// </summary>
         public int CheckCalledbytheGrave(int id)
         {
-            if (!calledbytheGraveCount.ContainsKey(id))
-            {
-                return 0;
-            }
-            return calledbytheGraveCount[id];
+            if (currentNegatingIdList.Contains(id)) return 1;
+            if (DefaultCheckWhetherCardIdIsNegated(id)) return 1;
+            return 0;
         }
 
         public void CheckEnemyMoveGrave()
@@ -468,24 +466,6 @@ namespace WindBot.Game.AI.Decks
             if (lastcard == null || lastcard.Controller != 1) return false;
             if (lastcard.IsMonster() && lastcard.HasSetcode(SetcodeTimeLord) && Duel.Phase == DuelPhase.Standby) return false;
             return true;
-        }
-
-        /// <summary>
-        /// Check whether negate opposite's effect and clear flag
-        /// </summary>
-        public void CheckDeactiveFlag()
-        {
-            if (Util.GetLastChainCard() != null && Duel.LastChainPlayer == 1)
-            {
-                if (Util.GetLastChainCard().IsCode(_CardId.MaxxC))
-                {
-                    enemyActivateMaxxC = false;
-                }
-                if (Util.GetLastChainCard().IsCode(_CardId.LockBird))
-                {
-                    enemyActivateLockBird = false;
-                }
-            }
         }
 
         /// <summary>
@@ -629,25 +609,42 @@ namespace WindBot.Game.AI.Decks
         /// <param name="avoidList">Whether need to avoid set in this place</param>
         public void SelectSTPlace(ClientCard card = null, bool avoidImpermanence = false, List<int> avoidList = null)
         {
-            List<int> list = new List<int> { 0, 1, 2, 3, 4 };
-            int n = list.Count;
-            while (n-- > 1)
+            if (card == null) card = Card;
+            List<int> list = new List<int>();
+            for (int seq = 0; seq < 5; ++seq)
             {
-                int index = Program.Rand.Next(n + 1);
-                int temp = list[index];
-                list[index] = list[n];
-                list[n] = temp;
-            }
-            foreach (int seq in list)
-            {
-                int zone = (int)System.Math.Pow(2, seq);
                 if (Bot.SpellZone[seq] == null)
                 {
                     if (card != null && card.Location == CardLocation.Hand && avoidImpermanence && infiniteImpermanenceList.Contains(seq)) continue;
                     if (avoidList != null && avoidList.Contains(seq)) continue;
+                    list.Add(seq);
+                }
+            }
+            int n = list.Count;
+            while (n-- > 1)
+            {
+                int index = Program.Rand.Next(list.Count);
+                int nextIndex = (index + Program.Rand.Next(list.Count - 1)) % list.Count;
+                int tempInt = list[index];
+                list[index] = list[nextIndex];
+                list[nextIndex] = tempInt;
+            }
+            if (avoidImpermanence && Bot.GetMonsters().Any(c => c.IsFaceup() && !c.IsDisabled()))
+            {
+                foreach (int seq in list)
+                {
+                    ClientCard enemySpell = Enemy.SpellZone[4 - seq];
+                    if (enemySpell != null && enemySpell.IsFacedown()) continue;
+                    int zone = (int)System.Math.Pow(2, seq);
                     AI.SelectPlace(zone);
                     return;
-                };
+                }
+            }
+            foreach (int seq in list)
+            {
+                int zone = (int)System.Math.Pow(2, seq);
+                AI.SelectPlace(zone);
+                return;
             }
             AI.SelectPlace(0);
         }
@@ -760,13 +757,6 @@ namespace WindBot.Game.AI.Decks
             ClientCard card = Util.GetLastChainCard();
             if (player == 1)
             {
-                if (card != null && card.IsCode(_CardId.CalledByTheGrave))
-                {
-                    foreach (ClientCard targetCard in Duel.LastChainTargets) {
-                        Logger.DebugWriteLine("===Exosister: " + targetCard?.Name + " is targeted by called by the grave.");
-                        calledbytheGraveCount[targetCard.Id] = 2;
-                    }
-                }
                 foreach (ClientCard targetCard in Duel.LastChainTargets) {
                     if (targetCard.Location == CardLocation.Grave)
                     {
@@ -778,6 +768,30 @@ namespace WindBot.Game.AI.Decks
             }
             base.OnSelectChain(cards);
         }
+
+        public override void OnChainSolved(int chainIndex)
+        {
+            ClientCard currentCard = Duel.GetCurrentSolvingChainCard();
+            if (currentCard != null && !Duel.IsCurrentSolvingChainNegated() && currentCard.Controller == 1)
+            {
+                if (currentCard.IsCode(_CardId.MaxxC))
+                    enemyActivateMaxxC = true;
+                if (currentCard.IsCode(_CardId.LockBird))
+                    enemyActivateLockBird = true;
+                if (currentCard.IsCode(_CardId.InfiniteImpermanence))
+                {
+                    for (int i = 0; i < 5; ++i)
+                    {
+                        if (Enemy.SpellZone[i] == currentCard)
+                        {
+                            infiniteImpermanenceList.Add(4 - i);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
 
         /// <summary>
         /// clear chain information
@@ -819,15 +833,7 @@ namespace WindBot.Game.AI.Decks
             enemyActivateMaxxC = false;
             enemyActivateLockBird = false;
             infiniteImpermanenceList.Clear();
-            // CalledbytheGrave refresh
-            List<int> key_list = calledbytheGraveCount.Keys.ToList();
-            foreach (int dic in key_list)
-            {
-                if (calledbytheGraveCount[dic] > 1)
-                {
-                    calledbytheGraveCount[dic] -= 1;
-                }
-            }
+            currentNegatingIdList.Clear();
 
             summoned = false;
             elisEffect1Activated = false;
@@ -1115,7 +1121,6 @@ namespace WindBot.Game.AI.Decks
                     return false;
                 }
             }
-            CheckDeactiveFlag();
             return DefaultAshBlossomAndJoyousSpring();
         }
 
@@ -1174,7 +1179,6 @@ namespace WindBot.Game.AI.Decks
                 {
                     ClientCard target = GetProblematicEnemyMonster(canBeTarget: true);
                     List<ClientCard> enemyMonsters = Enemy.GetMonsters();
-                    CheckDeactiveFlag();
                     AI.SelectCard(target);
                     infiniteImpermanenceList.Add(this_seq);
                     return true;
@@ -1209,7 +1213,6 @@ namespace WindBot.Game.AI.Decks
                 {
                     if (card.IsFaceup() && !card.IsShouldNotBeTarget() && !card.IsShouldNotBeSpellTrapTarget())
                     {
-                        CheckDeactiveFlag();
                         AI.SelectCard(card);
                         return true;
                     }
@@ -1226,7 +1229,7 @@ namespace WindBot.Game.AI.Decks
                 // negate
                 if (Util.GetLastChainCard().IsMonster())
                 {
-                    int code = Util.GetLastChainCard().Id;
+                    int code = Util.GetLastChainCard().GetOriginCode();
                     if (code == 0) return false;
                     if (CheckCalledbytheGrave(code) > 0) return false;
                     if (Util.GetLastChainCard().IsCode(_CardId.MaxxC) && CheckAtAdvantage())
@@ -1237,15 +1240,15 @@ namespace WindBot.Game.AI.Decks
                     {
                         return false;
                     }
-                    if (Enemy.Graveyard.GetFirstMatchingCard(card => card.IsMonster() && card.IsOriginalCode(code)) != null)
+                    ClientCard targetCard = Enemy.Graveyard.GetFirstMatchingCard(card => card.IsMonster() && card.IsOriginalCode(code));
+                    if (targetCard != null)
                     {
                         if (!(Card.Location == CardLocation.SpellZone))
                         {
                             SelectSTPlace(null, true);
                         }
-                        AI.SelectCard(code);
-                        calledbytheGraveCount[code] = 2;
-                        CheckDeactiveFlag();
+                        AI.SelectCard(targetCard);
+                        currentNegatingIdList.Add(code);
                         return true;
                     }
                 }
@@ -1257,7 +1260,7 @@ namespace WindBot.Game.AI.Decks
                     {
                         int code = cards.Id;
                         AI.SelectCard(cards);
-                        calledbytheGraveCount[code] = 2;
+                        currentNegatingIdList.Add(code);
                         return true;
                     }
                 }
@@ -1272,7 +1275,7 @@ namespace WindBot.Game.AI.Decks
                         enemyMonsters.Reverse();
                         int code = enemyMonsters[0].Id;
                         AI.SelectCard(code);
-                        calledbytheGraveCount[code] = 2;
+                        currentNegatingIdList.Add(code);
                         return true;
                     }
                 }
@@ -1282,13 +1285,13 @@ namespace WindBot.Game.AI.Decks
             if (Duel.LastChainPlayer == 1) return false;
             List<ClientCard> targets = CheckDangerousCardinEnemyGrave(true);
             if (targets.Count() > 0) {
-                int code = targets[0].Id;
+                int code = targets[0].GetOriginCode();
                 if (!(Card.Location == CardLocation.SpellZone))
                 {
                     SelectSTPlace(null, true);
                 }
-                AI.SelectCard(code);
-                calledbytheGraveCount[code] = 2;
+                AI.SelectCard(targets);
+                currentNegatingIdList.Add(code);
                 return true;
             }
 
@@ -2971,6 +2974,16 @@ namespace WindBot.Game.AI.Decks
                 return true;
             }
 
+            return false;
+        }
+
+        protected override bool DefaultSetForDiabellze()
+        {
+            if (base.DefaultSetForDiabellze())
+            {
+                SelectSTPlace(null, true);
+                return true;
+            }
             return false;
         }
     }

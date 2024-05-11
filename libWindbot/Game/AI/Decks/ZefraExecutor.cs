@@ -573,6 +573,7 @@ namespace WindBot.Game.AI.Decks
             activate_count = 0;
             summon_count = 0;
             enemy_activate = false;
+            base.OnNewTurn();
         }
         private bool ZefraProvidenceEffect()
         {
@@ -2115,7 +2116,9 @@ namespace WindBot.Game.AI.Decks
                 result.AddRange(tRelease);
                 result.AddRange(nRelease);
             }
-            return Func.CheckSelectCount(Util, result, cards, min, max);
+            IList<ClientCard> selectResult = Func.CheckSelectCount(Util, result, cards, min, max);
+            if (selectResult == null) return base.OnSelectCard(cards, min, max, hint, cancelable);
+            return selectResult;
         }
         private bool HasInDeck(int id)
         {

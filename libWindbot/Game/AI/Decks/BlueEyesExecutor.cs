@@ -131,6 +131,7 @@ namespace WindBot.Game.AI.Decks
             UsedGalaxyEyesCipherDragon = null;
             AlternativeWhiteDragonSummoned = false;
             SoulChargeUsed = false;
+            base.OnNewTurn();
         }
 
         public override IList<ClientCard> OnSelectCard(IList<ClientCard> cards, int min, int max, int hint, bool cancelable)
@@ -146,7 +147,8 @@ namespace WindBot.Game.AI.Decks
                 return Util.CheckSelectCount(result, cards, min, max);
             }
             Logger.DebugWriteLine("Use default.");
-            return null;
+
+            return base.OnSelectCard(cards, min, max, hint, cancelable);
         }
 
         public override IList<ClientCard> OnSelectXyzMaterial(IList<ClientCard> cards, int min, int max)
