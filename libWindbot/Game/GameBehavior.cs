@@ -85,6 +85,7 @@ namespace WindBot.Game
             _packets.Add(StocMessage.Chat, OnChat);
             _packets.Add(StocMessage.ChangeSide, OnChangeSide);
             _packets.Add(StocMessage.ErrorMsg, OnErrorMsg);
+            _packets.Add(StocMessage.TeammateSurrender, OnTeammateSurrender);
 
             _messages.Add(GameMessage.Retry, OnRetry);
             _messages.Add(GameMessage.Start, OnStart);
@@ -323,6 +324,12 @@ namespace WindBot.Game
                     _ai.OnDeckError("DECK");
             }
             //Connection.Close();
+        }
+
+        private void OnTeammateSurrender(BinaryReader packet)
+        {
+            Thread.Sleep(500);
+            Game.Surrender();
         }
 
         private void OnRetry(BinaryReader packet)
@@ -1020,6 +1027,13 @@ namespace WindBot.Game
                 if (card.Id == 0)
                     card.SetId(id);
                 cards.Add(card);
+            }
+
+            if (_select_hint == 575 && cancelable) // HINTMSG_FIELD_FIRST
+            {
+                _select_hint = 0;
+                Connection.Send(CtosMessage.Response, -1);
+                return;
             }
 
             IList<ClientCard> selected = func(cards, min, max, _select_hint, cancelable);

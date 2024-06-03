@@ -78,9 +78,6 @@
     <Compile Include="WindBot.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="WindBotInfo.cs" />
-    <Compile Include="YGOSharp.Network\AsyncBinaryClient.cs" />
-    <Compile Include="YGOSharp.Network\AsyncNetworkServer.cs" />
-    <Compile Include="YGOSharp.Network\AsyncYGOClient.cs" />
     <Compile Include="YGOSharp.Network\BinaryClient.cs" />
     <Compile Include="YGOSharp.Network\Enums\CtosMessage.cs" />
     <Compile Include="YGOSharp.Network\Enums\GameState.cs" />
@@ -89,7 +86,6 @@
     <Compile Include="YGOSharp.Network\Enums\PlayerType.cs" />
     <Compile Include="YGOSharp.Network\Enums\StocMessage.cs" />
     <Compile Include="YGOSharp.Network\NetworkClient.cs" />
-    <Compile Include="YGOSharp.Network\NetworkServer.cs" />
     <Compile Include="YGOSharp.Network\Utils\BinaryExtensions.cs" />
     <Compile Include="YGOSharp.Network\YGOClient.cs" />
     <Compile Include="YGOSharp.OCGWrapper.Enums\CardAttribute.cs" />

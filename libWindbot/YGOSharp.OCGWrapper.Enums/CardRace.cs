@@ -24,7 +24,9 @@
         Reptile = 0x80000,
         Psycho = 0x100000,
         DivineBeast = 0x200000,
+        CreatorGod = 0x400000,
         Wyrm = 0x800000,
-        Cyberse = 0x1000000
+        Cyberse = 0x1000000,
+        Illusion = 0x2000000
     }
 }
