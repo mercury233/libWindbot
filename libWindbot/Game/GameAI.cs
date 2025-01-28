@@ -1,5 +1,6 @@
 ﻿using System.Linq;
 using System.Collections.Generic;
+using System.Threading;
 using WindBot.Game.AI;
 using YGOSharp.OCGWrapper.Enums;
 
@@ -48,6 +49,9 @@ namespace WindBot.Game
         public void OnDeckError(string card)
         {
             _dialogs.SendDeckSorry(card);
+            Thread.Sleep(1000);
+            _dialogs.SendSurrender();
+            Game.Connection.Close();
         }
 
         /// <summary>
@@ -159,6 +163,15 @@ namespace WindBot.Game
         public void OnChainSolved(int chainIndex)
         {
             Executor.OnChainSolved(chainIndex);
+        }
+
+        /// <summary>
+        /// Called when card is successfully special summoned.
+        /// Used on monsters that can only special summoned once per turn.
+        /// </summary>
+        public void OnSpSummoned()
+        {
+            Executor.OnSpSummoned();
         }
         
         /// <summary>
