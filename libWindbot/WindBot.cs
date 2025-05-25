@@ -33,6 +33,12 @@ namespace WindBot
             return card1.Name;
         }
 
+        public static (string first, string middle, string last) Test3(long id) // tuple return type
+        {
+            NamedCard card1 = NamedCard.Get(22862454);
+            return (first: "hello", middle: "c#7.0", last: card1.Name);
+        }
+
         public static void InitAndroid(string assetPath, string databasePath, string confPath)
         {
             Program.Rand = new Random();
