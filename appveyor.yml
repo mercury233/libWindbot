@@ -7,8 +7,8 @@ environment:
     secure: QRJ97uSkoKE5kasZbXJMkRXX9VZYA4jUIl1YgkqMT+KE2hvSGds459bxYHQvvwFP
 
 install:
-  - bash -c "curl --retry 5 --connect-timeout 30 --location --remote-header-name --remote-name https://dl.google.com/android/repository/android-ndk-r16b-windows-x86_64.zip ; exit 0"
-  - 7z x android-ndk-r16b-windows-x86_64.zip -o"C:\"
+  - bash -c "curl --retry 5 --connect-timeout 30 --location --remote-header-name --remote-name https://dl.google.com/android/repository/android-ndk-r15c-windows-x86_64.zip ; exit 0"
+  - 7z x android-ndk-r15c-windows-x86_64.zip -o"C:\"
 
   - bash -c "curl --retry 5 --connect-timeout 30 --location --remote-header-name --remote-name https://download.mono-project.com/archive/5.12.0/windows-installer/mono-5.12.0-gtksharp-2.12.45-win32-0.msi ; exit 0"
   - start /wait msiexec /i mono-5.12.0-gtksharp-2.12.45-win32-0.msi /quiet /norestart
@@ -27,7 +27,7 @@ install:
       $iniContent = Get-Content -Path $iniFile ;
       $match = $iniContent | Where-Object { $_ -match $pattern } ;
       $InstallationID = $matches[1] ;
-      reg add HKCU\Software\Xamarin\VisualStudio\15.0_${InstallationID}\Android /v AndroidNdkDirectory /d "C:\android-ndk-r16b" /f ;
+      reg add HKCU\Software\Xamarin\VisualStudio\15.0_${InstallationID}\Android /v AndroidNdkDirectory /d "C:\android-ndk-r15c" /f ;
       Copy-Item "C:\Program Files (x86)\Mono\lib\mono\4.5\mscorlib.dll" -Destination "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\Common7\IDE\ReferenceAssemblies\Microsoft\Framework\MonoAndroid\v1.0\" -Force
   
 configuration: Release
@@ -70,4 +70,4 @@ deploy:
 
 cache:
   - mono-5.12.0-gtksharp-2.12.45-win32-0.msi
-  - android-ndk-r16b-windows-x86_64.zip
+  - android-ndk-r15c-windows-x86_64.zip
