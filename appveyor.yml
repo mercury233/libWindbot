@@ -28,7 +28,7 @@ install:
       $match = $iniContent | Where-Object { $_ -match $pattern } ;
       $InstallationID = $matches[1] ;
       reg add HKCU\Software\Xamarin\VisualStudio\15.0_${InstallationID}\Android /v AndroidNdkDirectory /d "C:\android-ndk-r15c" /f ;
-#      Copy-Item "C:\Program Files (x86)\Mono\lib\mono\4.5\mscorlib.dll" -Destination "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\Common7\IDE\ReferenceAssemblies\Microsoft\Framework\MonoAndroid\v1.0\" -Force
+      Copy-Item "C:\Program Files (x86)\Mono\lib\mono\4.5\mscorlib.dll" -Destination "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\Common7\IDE\ReferenceAssemblies\Microsoft\Framework\MonoAndroid\v1.0\" -Force
   
 configuration: Release
 
