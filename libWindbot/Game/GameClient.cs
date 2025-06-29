@@ -1,7 +1,7 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 using System.Linq;
 using System.Net;
-using System.Text;
 using YGOSharp.Network;
 using YGOSharp.Network.Enums;
 using YGOSharp.Network.Utils;
@@ -65,7 +65,12 @@ namespace WindBot.Game
 
         private void OnConnected()
         {
-            BinaryWriter packet = GamePacketFactory.Create(CtosMessage.PlayerInfo);
+            BinaryWriter packet = GamePacketFactory.Create(CtosMessage.ExternalAddress);
+            packet.Write((UInt32)0); // real_ip, is always 0 in normal client
+            packet.WriteUnicodeAutoLength(_serverHost, 255);
+            Connection.Send(packet);
+
+            packet = GamePacketFactory.Create(CtosMessage.PlayerInfo);
             packet.WriteUnicode(Username, 20);
             Connection.Send(packet);
 
@@ -73,7 +78,7 @@ namespace WindBot.Game
             packet = GamePacketFactory.Create(CtosMessage.JoinGame);
             packet.Write(_proVersion);
             packet.Write(junk);
-            packet.WriteUnicode(_roomInfo, 30);
+            packet.WriteUnicode(_roomInfo, 20);
             Connection.Send(packet);
         }
 
@@ -84,9 +89,8 @@ namespace WindBot.Game
 
         public void Chat(string message)
         {
-            byte[] content = Encoding.Unicode.GetBytes(message + "\0");
             BinaryWriter chat = GamePacketFactory.Create(CtosMessage.Chat);
-            chat.Write(content);
+            chat.WriteUnicodeAutoLength(message, 255);
             Connection.Send(chat);
         }
 
