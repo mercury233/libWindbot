@@ -97,6 +97,7 @@
     <Compile Include="YGOSharp.OCGWrapper.Enums\DuelPhase.cs" />
     <Compile Include="YGOSharp.OCGWrapper.Enums\GameMessage.cs" />
     <Compile Include="YGOSharp.OCGWrapper.Enums\CardLinkMarker.cs" />
+    <Compile Include="YGOSharp.OCGWrapper.Enums\PlayerHintType.cs" />
     <Compile Include="YGOSharp.OCGWrapper.Enums\Query.cs" />
     <Compile Include="YGOSharp.OCGWrapper\Card.cs" />
     <Compile Include="YGOSharp.OCGWrapper\CardsManager.cs" />
