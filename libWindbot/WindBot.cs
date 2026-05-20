@@ -36,6 +36,7 @@ namespace WindBot
         public static void InitAndroid(string assetPath, string databasePath, string confPath)
         {
             Program.Rand = new Random();
+			Program.ServerMode = false;
             AssetPath = assetPath;
             DecksManager.Init();
             NamedCardsManager.Init(databasePath);
@@ -164,6 +165,7 @@ namespace WindBot
     public class Program
     {
         internal static Random Rand;
+		internal static bool ServerMode;
 
         public static FileStream ReadFile(string directory, string filename, string extension)
         {
