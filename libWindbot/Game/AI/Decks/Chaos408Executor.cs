@@ -111,11 +111,11 @@ namespace WindBot.Game.AI.Decks
             IList<ClientCard> cards, int min, int max, int hint, bool cancelable)
         {
             ClientCard currentChainCard = Duel.GetCurrentChainCard();
-            ClientCard solvingChainCard = Duel.GetCurrentSolvingChainCard();
+            ChainInfo solvingChain = Duel.GetCurrentSolvingChainInfo();
 
-            if (solvingChainCard != null &&
-                solvingChainCard.Controller == 0 &&
-                solvingChainCard.IsCode(CardId.GracefulCharity) &&
+            if (solvingChain != null &&
+                solvingChain.ActivatePlayer == 0 &&
+                solvingChain.IsActivateCode(CardId.GracefulCharity) &&
                 hint == HintMsg.Discard)
             {
                 List<ClientCard> selected = new List<ClientCard>();
@@ -196,9 +196,9 @@ namespace WindBot.Game.AI.Decks
                 return Util.CheckSelectCount(selected, cards, min, max);
             }
 
-            if (solvingChainCard != null &&
-                solvingChainCard.Controller == 0 &&
-                solvingChainCard.IsCode(CardId.Confiscation) &&
+            if (solvingChain != null &&
+                solvingChain.ActivatePlayer == 0 &&
+                solvingChain.IsActivateCode(CardId.Confiscation) &&
                 hint == HintMsg.Discard)
             {
                 List<ClientCard> targets = new List<ClientCard>();
@@ -317,9 +317,9 @@ namespace WindBot.Game.AI.Decks
                 return Util.CheckSelectCount(targets, cards, min, max);
             }
 
-            if (solvingChainCard != null &&
-                solvingChainCard.Controller == 0 &&
-                solvingChainCard.IsCode(CardId.Sangan) &&
+            if (solvingChain != null &&
+                solvingChain.ActivatePlayer == 0 &&
+                solvingChain.IsActivateCode(CardId.Sangan) &&
                 hint == HintMsg.AddToHand)
             {
                 List<int> priority = Duel.Player == 0
@@ -483,12 +483,46 @@ namespace WindBot.Game.AI.Decks
             if (equipTargetsSpiritReaper)
                 return false;
 
-            if (DefaultMysticalSpaceTyphoon())
+            ClientCard equipTarget = GetHighPriorityEnemyEquipSpellTarget(false);
+            if (equipTarget != null)
+            {
+                AI.SelectCard(equipTarget);
                 return true;
+            }
+
+            ClientCard attacker = Duel.Phase == DuelPhase.BattleStep &&
+                Bot.UnderAttack
+                ? Enemy.BattlingMonster
+                : null;
+            equipTarget = attacker == null
+                ? null
+                : attacker.EquipCards.FirstOrDefault(c =>
+                    c.Controller == 1 &&
+                    !c.IsShouldNotBeTarget() &&
+                    !c.IsShouldNotBeSpellTrapTarget());
+            if (equipTarget != null)
+            {
+                AI.SelectCard(equipTarget);
+                return true;
+            }
+
+            List<ClientCard> spells = Enemy.GetSpells();
+            ClientCard target = Enemy.SpellZone.GetFloodgate();
+            if (target == null && Duel.Player == 0)
+                target = spells.FirstOrDefault(c => c.IsFacedown());
+            if (target == null && Duel.Player == 1)
+                target = spells.FirstOrDefault(c =>
+                    c.HasType(CardType.Continuous) ||
+                    c.HasType(CardType.Field));
+            if (target != null)
+            {
+                AI.SelectCard(target);
+                return true;
+            }
 
             if (ShouldUseSetQuickPlayForMagicianOfFaith())
             {
-                ClientCard target = Enemy.GetSpells()
+                target = Enemy.GetSpells()
                     .FirstOrDefault(c => c.IsFacedown());
                 if (target != null)
                 {
@@ -499,8 +533,57 @@ namespace WindBot.Game.AI.Decks
             return false;
         }
 
+        private ClientCard GetHighPriorityEnemyEquipSpellTarget(bool monsterEffect)
+        {
+            var highPriorityIds = new[]
+            {
+                CardId.SnatchSteal,
+                CardId.PrematureBurial
+            };
+            ClientCard lastChainCard = Util.GetLastChainCard();
+            if (lastChainCard != null &&
+                lastChainCard.Controller == 1 &&
+                lastChainCard.Location == CardLocation.SpellZone &&
+                lastChainCard.IsCode(highPriorityIds) &&
+                !lastChainCard.IsShouldNotBeTarget() &&
+                (monsterEffect
+                    ? !lastChainCard.IsShouldNotBeMonsterTarget()
+                    : !lastChainCard.IsShouldNotBeSpellTrapTarget()))
+            {
+                return lastChainCard;
+            }
+
+            return Enemy.GetSpells().FirstOrDefault(c =>
+                c.IsFaceup() &&
+                c.IsCode(highPriorityIds) &&
+                !c.IsShouldNotBeTarget() &&
+                (monsterEffect
+                    ? !c.IsShouldNotBeMonsterTarget()
+                    : !c.IsShouldNotBeSpellTrapTarget()));
+        }
+
         private bool BookOfMoonActivate()
         {
+            ClientCard lastChainCard = Util.GetLastChainCard();
+            ClientCard snatchStealTarget = lastChainCard != null &&
+                lastChainCard.Controller == 1 &&
+                lastChainCard.IsCode(CardId.SnatchSteal)
+                ? Duel.LastChainTargets.FirstOrDefault(c =>
+                    c.Controller == 0 &&
+                    c.Location == CardLocation.MonsterZone &&
+                    c.IsFaceup() &&
+                    c.Defense >= 1000 &&
+                    !c.HasType(CardType.Link) &&
+                    !c.IsShouldNotBeTarget() &&
+                    !c.IsShouldNotBeSpellTrapTarget() &&
+                    !IsCardAlreadyHandledInCurrentChain(c))
+                : null;
+            if (snatchStealTarget != null)
+            {
+                AI.SelectCard(snatchStealTarget);
+                return true;
+            }
+
             ClientCard attacker = Enemy.BattlingMonster;
             if (ShouldStopAttack(attacker) && attacker.IsFaceup() &&
                 !attacker.HasType(CardType.Link) &&
@@ -1104,7 +1187,8 @@ namespace WindBot.Game.AI.Decks
             if (Duel.LastSummonedCards.Contains(Card) && Card.Attack <= 1600)
                 return true;
 
-            ClientCard target = Util.GetBestEnemySpell(true);
+            ClientCard target = GetHighPriorityEnemyEquipSpellTarget(true) ??
+                Util.GetBestEnemySpell(true);
             if (target != null && (target.IsShouldNotBeTarget() ||
                 target.IsShouldNotBeMonsterTarget()))
                 target = null;

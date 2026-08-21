@@ -25,7 +25,8 @@ namespace WindBot.Game.AI.Decks
             public const int WindwitchSnowBell = 70117860;
             public const int SpeedroidRedEyedDice = 16725505;
             public const int Raigeki = 12580477;
-            public const int MonsterReborn = 83764719;
+            public const int HarpiesFeatherDuster = 18144506;
+            public const int MonsterReborn = 83764718;
             public const int Reasoning = 58577036;
             public const int ElShaddollWinda = 94977269;
 
@@ -220,10 +221,10 @@ namespace WindBot.Game.AI.Decks
             : base(ai, duel)
         {
             //counter
-            AddExecutor(ExecutorType.Activate, CardId.SolemnWarning, base.DefaultSolemnWarning);
+            AddExecutor(ExecutorType.Activate, CardId.SolemnWarning, DefaultSolemnWarning);
             AddExecutor(ExecutorType.Activate, CardId.ForbiddenChalice, ForbiddenChaliceeff);
             AddExecutor(ExecutorType.Activate, CardId.CrystalWingSynchroDragon, CrystalWingSynchroDragoneff);
-            AddExecutor(ExecutorType.Activate, CardId.SolemnStrike, base.DefaultSolemnStrike);
+            AddExecutor(ExecutorType.Activate, CardId.SolemnStrike, DefaultSolemnStrike);
             AddExecutor(ExecutorType.Activate, CardId.GustoGulldo, GustoGulldoeff);
             AddExecutor(ExecutorType.Activate, CardId.GustoEgul, GustoEguleff);
             AddExecutor(ExecutorType.Activate, CardId.WindaPriestessOfGusto, WindaPriestessOfGustoeff);
@@ -271,6 +272,7 @@ namespace WindBot.Game.AI.Decks
             AddExecutor(ExecutorType.SpSummon, CardId.OldEntityHastorr);
             AddExecutor(ExecutorType.SpSummon, CardId.GreatFly, GreatFlysp);
             AddExecutor(ExecutorType.SpSummon, CardId.WynnTheWindCharmerVerdant, WynnTheWindCharmerVerdantsp);
+            AddExecutor(ExecutorType.Activate, CardId.HarpiesFeatherDuster);
             AddExecutor(ExecutorType.Activate, CardId.Raigeki);
             AddExecutor(ExecutorType.Activate, CardId.GozenMatch);
             AddExecutor(ExecutorType.Activate, CardId.KingsConsonance, KingsConsonanceeff);
@@ -518,6 +520,8 @@ namespace WindBot.Game.AI.Decks
         }
         private bool EmergencyTeleporteff()
         {
+            if (Duel.Player == 0 && Duel.Phase < DuelPhase.Main1)
+                return false;
             if ((Bot.HasInMonstersZone(CardId.CrystalWingSynchroDragon) ||
                 Bot.HasInMonstersZone(CardId.MistWurm)) &&
                 (Util.GetBotAvailZonesFromExtraDeck() == 0))
@@ -567,7 +571,7 @@ namespace WindBot.Game.AI.Decks
         private bool SpeedroidTaketomborgeff()
         {
             if (DefaultCheckWhetherCardIsNegated(Card)) return false;
-            if ((Bot.GetRemainingCount(CardId.SpeedroidRedEyedDice, 1) >= 1) &&
+            if (Bot.HasInDeck(CardId.SpeedroidRedEyedDice) &&
                 Bot.HasInMonstersZone(CardId.SpeedroidTerrortop))
             {
                 AI.SelectCard(CardId.SpeedroidRedEyedDice);
@@ -605,7 +609,7 @@ namespace WindBot.Game.AI.Decks
             if (Enemy.HasInMonstersZone(CardId.ElShaddollWinda)) return false;
             if (WindwitchGlassBelleff_used && !Bot.HasInHand(CardId.WindwitchSnowBell)) return false;
             //AI.SelectPlace(Zones.z2, 1);
-            if (Bot.GetRemainingCount(CardId.WindwitchGlassBell, 3) >= 1)
+            if (Bot.HasInDeck(CardId.WindwitchGlassBell))
             {
                 AI.SelectCard(CardId.WindwitchGlassBell);
             }
@@ -889,7 +893,7 @@ namespace WindBot.Game.AI.Decks
         private bool CosmicCycloneeff()
         {
             foreach (ClientCard card in Duel.CurrentChain)
-                if (card.IsCode(_CardId.CosmicCyclone))
+                if (card.IsCode(CardId.CosmicCyclone))
                     return false;
             if ((Enemy.HasInSpellZone(CardId.SkillDrain) ||
                 Enemy.HasInSpellZone(CardId.Rivalry) ||
@@ -914,8 +918,20 @@ namespace WindBot.Game.AI.Decks
             }
             return false;
         }
+        private bool ShouldKeepMonsterZoneEmptyAfterLosingLastMonster()
+        {
+            if (Duel.Player != 1 || Bot.GetMonsterCount() != 0 ||
+                !(Bot.HasInHand(CardId.SpeedroidTerrortop) || Bot.HasInHand(CardId.WindwitchIceBell)))
+                return false;
+            int enemyMonsters = Enemy.GetMonsters().Count(card => card.IsAttack());
+            ClientCard bestEnemyMonster = Enemy.MonsterZone.GetHighestAttackMonster();
+            return enemyMonsters <= 1 || bestEnemyMonster == null ||
+                (enemyMonsters == 2 && Bot.LifePoints > bestEnemyMonster.Attack);
+        }
         private bool GustoGulldoeff()
         {
+            if (ShouldKeepMonsterZoneEmptyAfterLosingLastMonster())
+                return false;
             if (Bot.HasInMonstersZone(CardId.DaigustoSphreez))
             {
                 AI.SelectCard(CardId.GustoEgul, CardId.WindaPriestessOfGusto);
@@ -928,6 +944,8 @@ namespace WindBot.Game.AI.Decks
         }
         private bool GustoEguleff()
         {
+            if (ShouldKeepMonsterZoneEmptyAfterLosingLastMonster())
+                return false;
             if (Bot.HasInMonstersZone(CardId.DaigustoSphreez))
             {
                 AI.SelectCard(CardId.WindaPriestessOfGusto, CardId.PilicaDescendantOfGusto);
@@ -940,6 +958,8 @@ namespace WindBot.Game.AI.Decks
         }
         private bool WindaPriestessOfGustoeff()
         {
+            if (ShouldKeepMonsterZoneEmptyAfterLosingLastMonster())
+                return false;
             if (Bot.HasInMonstersZone(CardId.DaigustoSphreez))
             {
                 AI.SelectCard(CardId.GustoGulldo, CardId.GustoEgul);
@@ -1043,7 +1063,7 @@ namespace WindBot.Game.AI.Decks
             
             if (Card.IsFacedown())
                 return false;
-            return base.DefaultMonsterRepos();
+            return DefaultMonsterRepos();
         }
         public override bool OnSelectHand()
         {

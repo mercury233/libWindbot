@@ -92,17 +92,6 @@ namespace WindBot.Game.AI.Decks
         const int SetcodeOrcust = 0x11b;
         const int SetcodeHorus = 0x19d;
 
-        Dictionary<int, List<int>> DeckCountTable = new Dictionary<int, List<int>>{
-            {3, new List<int> { CardId.SPIRIT_OF_YUBEL, CardId.SAMSARA_D_LOTUS,CardId.NIGHTMARE_THRONE, CardId.SPIRIT_GATES,
-                                 _CardId.AshBlossom, CardId.DARK_BECKONING_BEAST,_CardId.InfiniteImpermanence } },
-            {2, new List<int> { _CardId.MaxxC, _CardId.CalledByTheGrave,CardId.GRUESOME_GRAVE_SQUIRMER}},
-            {1, new List<int> { CardId.FIENDSMITH_ENGRAVER, CardId.FIENDSMITHS_PARADISE,
-                                CardId.YUBEL, CardId.YUBEL_TERROR_INCARNATE, CardId.ABOMINABLE_CHAMBER,
-                                _CardId.CrossoutDesignator, CardId.GRUESOME_GRAVE_SQUIRMER, CardId.FABLED_LURRIE,
-                                CardId.NIGHTMARE_PAIN, CardId.TERRAFORMING, CardId.FIENDSMITH_TRACT,CardId.SHARVARA,
-                                CardId.CHAOS_SUMMONING_BEAST, CardId.LACRIMA_CT 
-                                } }
-        };
 
         List<int> notToNegateIdList = new List<int> { 58699500, 20343502, 19403423 };
         List<int> notToDestroySpellTrap = new List<int> { 50005218, 6767771 };
@@ -159,6 +148,7 @@ namespace WindBot.Game.AI.Decks
             AddExecutor(ExecutorType.Activate, CardId.UNCHAINED_SOUL_OF_RAGE, ActRageQuickLink);
             AddExecutor(ExecutorType.Activate, CardId.FIENDSMITHS_PARADISE, ActParadise);
 
+            // ===== Fiendsmith Line =====
             AddExecutor(ExecutorType.Activate, CardId.FIENDSMITH_ENGRAVER, ActEngraverHand);
             AddExecutor(ExecutorType.Activate, CardId.FIENDSMITH_TRACT, ActTract);
             AddExecutor(ExecutorType.SpSummon, CardId.FABLED_LURRIE);
@@ -170,6 +160,7 @@ namespace WindBot.Game.AI.Decks
             AddExecutor(ExecutorType.Activate, CardId.FIENDSMITH_ENGRAVER, ActEngraverGY);
             AddExecutor(ExecutorType.SpSummon, CardId.DDD_WAVE_HIGH_KING_CAESAR);
 
+            AddExecutor(ExecutorType.Activate, CardId.FIENDSMITH_ENGRAVER, ActEngraverField);
             AddExecutor(ExecutorType.Activate, CardId.LACRIMA_CT, ActLacimaCTGY);
 
             // Field & search line
@@ -247,54 +238,17 @@ namespace WindBot.Game.AI.Decks
         int _gateDiscardPreferredId = 0;  // จะทิ้งใบไหนเป็น cost
         bool _gateWantsRecycle = false;   // กำลังจะกดโหมดเก็บ Continuous
         bool _spQuickMode = false;
+        bool engraverFieldActivated = false;
+        bool engraverGYActivated = false;
         bool moonSummoned = false;
         bool requiemSummoned = false;
+        bool necroquipSummoned = false;
         bool thronePending = false;      // we're in a Throne activation flow
         bool throneSearched = false;     // after we chose the monster to search
         int throneDesiredPick = 0;       // preferred monster id to search
 
-        public List<T> ShuffleList<T>(List<T> list)
-        {
-            List<T> result = list;
-            int n = result.Count;
-            while (n-- > 1)
-            {
-                int index = Program.Rand.Next(result.Count);
-                int nextIndex = (index + Program.Rand.Next(result.Count - 1)) % result.Count;
-                T tempCard = result[index];
-                result[index] = result[nextIndex];
-                result[nextIndex] = tempCard;
-            }
-            return result;
-        }
-
         public override bool OnSelectHand() { return true; }
 
-        public List<ClientCard> ShuffleCardList(List<ClientCard> list)
-        {
-            List<ClientCard> result = list;
-            int n = result.Count;
-            while (n-- > 1)
-            {
-                int index = Program.Rand.Next(n + 1);
-                ClientCard temp = result[index];
-                result[index] = result[n];
-                result[n] = temp;
-            }
-            return result;
-        }
-
-        public int CheckRemainInDeck(int id)
-        {
-            for (int count = 1; count < 4; ++count)
-            {
-                if (DeckCountTable[count].Contains(id))
-                {
-                    return Bot.GetRemainingCount(id, count);
-                }
-            }
-            return 0;
-        }
 
         private bool MonsterRepos()
         {
@@ -345,40 +299,19 @@ namespace WindBot.Game.AI.Decks
                 int choose = (prefer != 0) ? LowestBit(prefer)
                                            : LowestBit(available & 0x1F); // fallback
 
-                AI.SelectPlace(choose);
                 return choose;
             }
-            SelectSTPlace(Card, true);
             return base.OnSelectPlace(cardId, player, location, available);
         }
 
         public override CardPosition OnSelectPosition(int cardId, IList<CardPosition> positions)
         {
-            if (positions == null || positions.Count == 0)
-                return base.OnSelectPosition(cardId, positions);
+            bool isYubelFamily = YUBEL_SET.Contains(cardId);
 
-            bool isYubelFamily =
-                YUBEL_SET.Contains(cardId) ||
-                (Card != null && YUBEL_SET.Contains(Card.Id)) ||
-                (Card != null && (Card.Name?.Contains("Yubel") ?? false));
+            if (isYubelFamily && positions.Contains(CardPosition.FaceUpAttack))
+                return CardPosition.FaceUpAttack;
 
-            if(!isYubelFamily)
-                return base.OnSelectPosition(cardId, positions);
-
-            CardPosition atkPref =
-                positions.Contains(CardPosition.FaceUpAttack) ? CardPosition.FaceUpAttack :
-                positions.Contains(CardPosition.Attack) ? CardPosition.Attack :
-                (CardPosition)0;
-
-            if (isYubelFamily && atkPref != 0)
-            {
-                AI.SelectPosition(atkPref);
-                return atkPref;
-            }
-
-            var chosen = positions[0];
-            AI.SelectPosition(chosen);
-            return chosen;
+            return base.OnSelectPosition(cardId, positions);
         }
 
         public bool AshBlossomActivate()
@@ -503,7 +436,7 @@ namespace WindBot.Game.AI.Decks
                 if (alias != 0 && alias - code < 10) code = alias;
                 if (code == 0) return false;
                 if (DefaultCheckWhetherCardIdIsNegated(code)) return false;
-                if (CheckRemainInDeck(code) > 0)
+                if (Bot.HasInDeck(code))
                 {
                     if (!(Card.Location == CardLocation.SpellZone))
                     {
@@ -662,19 +595,14 @@ namespace WindBot.Game.AI.Decks
             if (DefaultCheckWhetherCardIsNegated(Card)) return true;
             if (isMonster && (toFieldCheck || Card.Location == CardLocation.MonsterZone))
             {
-                if ((toFieldCheck && (((int)type & (int)CardType.Link) != 0)) || Card.IsDefense())
+                if ((toFieldCheck && (((int)type & (int)CardType.Link) == 0)) || Card.IsDefense())
                 {
-                    if (Enemy.MonsterZone.Any(card => CheckNumber41(card)) || Bot.MonsterZone.Any(card => CheckNumber41(card))) return true;
+                    if (DefaultCheckWhetherNumber41IsActive()) return true;
                 }
                 if (Enemy.HasInSpellZone(CardId.SkillDrain, true)) return true;
             }
             if (disablecheck) return (Card.Location == CardLocation.MonsterZone || Card.Location == CardLocation.SpellZone) && Card.IsDisabled() && Card.IsFaceup();
             return false;
-        }
-
-        public bool CheckNumber41(ClientCard card)
-        {
-            return card != null && card.IsFaceup() && card.IsCode(CardId.Number41BagooskatheTerriblyTiredTapir) && card.IsDefense() && !card.IsDisabled();
         }
 
         public void SelectSTPlace(ClientCard card = null, bool avoidImpermanence = false, List<int> avoidList = null)
@@ -690,15 +618,7 @@ namespace WindBot.Game.AI.Decks
                     list.Add(seq);
                 }
             }
-            int n = list.Count;
-            while (n-- > 1)
-            {
-                int index = Program.Rand.Next(list.Count);
-                int nextIndex = (index + Program.Rand.Next(list.Count - 1)) % list.Count;
-                int tempInt = list[index];
-                list[index] = list[nextIndex];
-                list[nextIndex] = tempInt;
-            }
+            Util.ShuffleListInPlace(list);
             if (avoidImpermanence && Bot.GetMonsters().Any(c => c.IsFaceup() && !c.IsDisabled()))
             {
                 foreach (int seq in list)
@@ -824,7 +744,7 @@ namespace WindBot.Game.AI.Decks
 
             List<ClientCard> problemEnemySpellList = Enemy.SpellZone.Where(c => c?.Data != null && !resultList.Contains(c) && !currentDestroyCardList.Contains(c)
                 && c.IsFloodgate() && c.IsFaceup() && CheckCanBeTargeted(c, canBeTarget, selfType)).ToList();
-            if (problemEnemySpellList.Count > 0) resultList.AddRange(ShuffleList(problemEnemySpellList));
+            if (problemEnemySpellList.Count > 0) resultList.AddRange(Util.ShuffleList(problemEnemySpellList));
 
             List<ClientCard> dangerList = Enemy.MonsterZone.Where(c => c?.Data != null && !resultList.Contains(c) && !currentDestroyCardList.Contains(c)
                 && c.IsMonsterDangerous() && c.IsFaceup() && CheckCanBeTargeted(c, canBeTarget, selfType)).OrderByDescending(card => card.Attack).ToList();
@@ -851,7 +771,7 @@ namespace WindBot.Game.AI.Decks
             List<ClientCard> spells = Enemy.GetSpells().Where(c => c.IsFaceup() && !currentDestroyCardList.Contains(c)
                 && c.HasType(CardType.Equip | CardType.Pendulum | CardType.Field | CardType.Continuous) && CheckCanBeTargeted(c, canBeTarget, selfType)
                 && !notToDestroySpellTrap.Contains(c.Id)).ToList();
-            if (spells.Count > 0 && !ignoreSpells) resultList.AddRange(ShuffleList(spells));
+            if (spells.Count > 0 && !ignoreSpells) resultList.AddRange(Util.ShuffleList(spells));
 
             return resultList;
         }
@@ -864,9 +784,9 @@ namespace WindBot.Game.AI.Decks
             enemyMonster.Sort(CardContainer.CompareCardAttack);
             enemyMonster.Reverse();
             targetList.AddRange(enemyMonster);
-            targetList.AddRange(ShuffleList(Enemy.GetSpells().Where(card => (!ignoreCurrentDestroy || !currentDestroyCardList.Contains(card)) && enemyPlaceThisTurn.Contains(card)).ToList()));
-            targetList.AddRange(ShuffleList(Enemy.GetSpells().Where(card => (!ignoreCurrentDestroy || !currentDestroyCardList.Contains(card)) && !enemyPlaceThisTurn.Contains(card)).ToList()));
-            targetList.AddRange(ShuffleList(Enemy.GetMonsters().Where(card => card.IsFacedown() && (!ignoreCurrentDestroy || !currentDestroyCardList.Contains(card))).ToList()));
+            targetList.AddRange(Util.ShuffleList(Enemy.GetSpells().Where(card => (!ignoreCurrentDestroy || !currentDestroyCardList.Contains(card)) && enemyPlaceThisTurn.Contains(card)).ToList()));
+            targetList.AddRange(Util.ShuffleList(Enemy.GetSpells().Where(card => (!ignoreCurrentDestroy || !currentDestroyCardList.Contains(card)) && !enemyPlaceThisTurn.Contains(card)).ToList()));
+            targetList.AddRange(Util.ShuffleList(Enemy.GetMonsters().Where(card => card.IsFacedown() && (!ignoreCurrentDestroy || !currentDestroyCardList.Contains(card))).ToList()));
 
             return targetList;
         }
@@ -907,7 +827,7 @@ namespace WindBot.Game.AI.Decks
             card = Enemy.MonsterZone.GetHighestAttackMonster(canBeTarget);
             if (card != null) return card;
             List<ClientCard> monsters = Enemy.GetMonsters();
-            if (monsters.Count > 0 && !onlyFaceup) return ShuffleCardList(monsters)[0];
+            if (monsters.Count > 0 && !onlyFaceup) return Util.ShuffleList(monsters)[0];
             return null;
         }
 
@@ -917,7 +837,7 @@ namespace WindBot.Game.AI.Decks
                 && c.IsFloodgate() && c.IsFaceup() && (!canBeTarget || !c.IsShouldNotBeTarget())).ToList();
             if (problemEnemySpellList.Count > 0)
             {
-                return ShuffleCardList(problemEnemySpellList)[0];
+                return Util.ShuffleList(problemEnemySpellList)[0];
             }
 
             List<ClientCard> spells = Enemy.GetSpells().Where(card => !(card.IsFaceup() && card.IsCode(_CardId.EvenlyMatched))).ToList();
@@ -925,12 +845,12 @@ namespace WindBot.Game.AI.Decks
             List<ClientCard> faceUpList = spells.Where(ecard => ecard.IsFaceup() && (ecard.HasType(CardType.Continuous) || ecard.HasType(CardType.Field) || ecard.HasType(CardType.Pendulum))).ToList();
             if (faceUpList.Count > 0)
             {
-                return ShuffleCardList(faceUpList)[0];
+                return Util.ShuffleList(faceUpList)[0];
             }
 
             if (spells.Count > 0 && !onlyFaceup)
             {
-                return ShuffleCardList(spells)[0];
+                return Util.ShuffleList(spells)[0];
             }
 
             return null;
@@ -953,7 +873,7 @@ namespace WindBot.Game.AI.Decks
                     graveMonsterList.Reverse();
                     return graveMonsterList[0];
                 }
-                return ShuffleCardList(Enemy.Graveyard.ToList())[0];
+                return Util.ShuffleList(Enemy.Graveyard.ToList())[0];
             }
 
             return null;
@@ -962,20 +882,19 @@ namespace WindBot.Game.AI.Decks
 
         public override void OnChainSolved(int chainIndex)
         {
-            ClientCard currentCard = Duel.GetCurrentSolvingChainCard();
-            var solving = Duel.GetCurrentSolvingChainCard();
+            ChainInfo currentChain = Duel.GetCurrentSolvingChainInfo();
             bool neg = Duel.IsCurrentSolvingChainNegated();
-            Logger.DebugWriteLine($"[CHAIN] Solved idx={chainIndex} negated={neg} solving={CardStr(solving)}");
-            if (currentCard != null && !Duel.IsCurrentSolvingChainNegated() && currentCard.Controller == 1)
+            Logger.DebugWriteLine($"[CHAIN] Solved idx={chainIndex} negated={neg} solving={CardStr(currentChain?.RelatedCard)}");
+            if (currentChain != null && !Duel.IsCurrentSolvingChainNegated() && currentChain.ActivatePlayer == 1)
             {
-                if (currentCard.IsCode(_CardId.MaxxC)) enemyActivateMaxxC = true;
-                if (currentCard.IsCode(CardId.Fuwalos)) enemyActivateMaxxC = true;
-                if (currentCard.IsCode(_CardId.LockBird)) enemyActivateLockBird = true;
-                if (currentCard.IsCode(_CardId.InfiniteImpermanence))
+                if (currentChain.IsActivateCode(_CardId.MaxxC)) enemyActivateMaxxC = true;
+                if (currentChain.IsActivateCode(CardId.Fuwalos)) enemyActivateMaxxC = true;
+                if (currentChain.IsActivateCode(_CardId.LockBird)) enemyActivateLockBird = true;
+                if (currentChain.IsActivateCode(_CardId.InfiniteImpermanence))
                 {
                     for (int i = 0; i < 5; ++i)
                     {
-                        if (Enemy.SpellZone[i] == currentCard)
+                        if (Enemy.SpellZone[i] == currentChain.RelatedCard)
                         {
                             infiniteImpermanenceList.Add(4 - i);
                             break;
@@ -983,6 +902,7 @@ namespace WindBot.Game.AI.Decks
                     }
                 }
             }
+            base.OnChainSolved(chainIndex);
         }
         public override void OnChainEnd()
         {
@@ -1036,6 +956,10 @@ namespace WindBot.Game.AI.Decks
             _gateDiscardPreferredId = 0;
             _gateWantsRecycle = false;
             _spQuickMode = false;
+
+            // reset Fiendsmith effects
+            engraverFieldActivated = false;
+            engraverGYActivated = false;
             
             base.OnNewTurn();
         }
@@ -1167,11 +1091,11 @@ namespace WindBot.Game.AI.Decks
             if (Card.Location == CardLocation.Hand && Bot.HasInSpellZone(CardId.NIGHTMARE_THRONE)) return false;
 
             int pick = 0;
-            if (!Bot.HasInHand(CardId.SAMSARA_D_LOTUS) && CheckRemainInDeck(CardId.SAMSARA_D_LOTUS) > 0)
+            if (!Bot.HasInHand(CardId.SAMSARA_D_LOTUS) && Bot.HasInDeck(CardId.SAMSARA_D_LOTUS))
                 pick = CardId.SAMSARA_D_LOTUS;
-            else if (Bot.HasInHand(CardId.SAMSARA_D_LOTUS) && !Bot.HasInHand(CardId.DARK_BECKONING_BEAST) && CheckRemainInDeck(CardId.DARK_BECKONING_BEAST) > 0)
+            else if (Bot.HasInHand(CardId.SAMSARA_D_LOTUS) && !Bot.HasInHand(CardId.DARK_BECKONING_BEAST) && Bot.HasInDeck(CardId.DARK_BECKONING_BEAST))
                 pick = CardId.DARK_BECKONING_BEAST;
-            else if (Bot.HasInHand(CardId.SAMSARA_D_LOTUS) && Bot.HasInHand(CardId.DARK_BECKONING_BEAST) && !Bot.HasInHand(CardId.CHAOS_SUMMONING_BEAST) && CheckRemainInDeck(CardId.CHAOS_SUMMONING_BEAST) > 0)
+            else if (Bot.HasInHand(CardId.SAMSARA_D_LOTUS) && Bot.HasInHand(CardId.DARK_BECKONING_BEAST) && !Bot.HasInHand(CardId.CHAOS_SUMMONING_BEAST) && Bot.HasInDeck(CardId.CHAOS_SUMMONING_BEAST))
                 pick = CardId.CHAOS_SUMMONING_BEAST;
 
             thronePending = true;
@@ -1200,9 +1124,9 @@ namespace WindBot.Game.AI.Decks
         private bool ActDarkBeckoningBeast()
         {
             if (Duel.Phase != DuelPhase.Main1) return false;
-            if ((CheckRemainInDeck(CardId.SPIRIT_GATES) > 0) && !Bot.HasInSpellZone(CardId.SPIRIT_GATES))
+            if (Bot.HasInDeck(CardId.SPIRIT_GATES) && !Bot.HasInSpellZone(CardId.SPIRIT_GATES))
             { AI.SelectCard(CardId.SPIRIT_GATES); return true; }
-            else if (CheckRemainInDeck(CardId.CHAOS_SUMMONING_BEAST) > 0)
+            else if (Bot.HasInDeck(CardId.CHAOS_SUMMONING_BEAST))
             { AI.SelectCard(CardId.CHAOS_SUMMONING_BEAST); return true; }
             else { return false; }
         }
@@ -1218,11 +1142,11 @@ namespace WindBot.Game.AI.Decks
             int pick = 0;
             bool dbbOnField = Bot.HasInMonstersZone(CardId.DARK_BECKONING_BEAST, false, false, true);
 
-            if (dbbOnField && CheckRemainInDeck(CardId.CHAOS_SUMMONING_BEAST) > 0)
+            if (dbbOnField && Bot.HasInDeck(CardId.CHAOS_SUMMONING_BEAST))
                 pick = CardId.CHAOS_SUMMONING_BEAST;
-            else if (CheckRemainInDeck(CardId.DARK_BECKONING_BEAST) > 0)
+            else if (Bot.HasInDeck(CardId.DARK_BECKONING_BEAST))
                 pick = CardId.DARK_BECKONING_BEAST;
-            else if (CheckRemainInDeck(CardId.CHAOS_SUMMONING_BEAST) > 0)
+            else if (Bot.HasInDeck(CardId.CHAOS_SUMMONING_BEAST))
                 pick = CardId.CHAOS_SUMMONING_BEAST;
 
             if (pick == 0) return false;
@@ -1353,7 +1277,7 @@ namespace WindBot.Game.AI.Decks
         {
             if (Card.Location == CardLocation.SpellZone)
             {
-                if(CheckRemainInDeck(CardId.GRUESOME_GRAVE_SQUIRMER)==0)return false;
+                if(!Bot.HasInDeck(CardId.GRUESOME_GRAVE_SQUIRMER))return false;
 
                 if (Bot.HasInMonstersZone(CardId.SPIRIT_OF_YUBEL) || Bot.HasInHand(CardId.SPIRIT_OF_YUBEL))
                 {
@@ -1425,12 +1349,12 @@ namespace WindBot.Game.AI.Decks
             return true;
             /*if (Card.Location == CardLocation.Hand)
             {
-                if (CheckRemainInDeck(CardId.FIENDSMITH_ENGRAVER) == 0 &&
-                    CheckRemainInDeck(CardId.LACRIMA_CT) == 0)
+                if (!Bot.HasInDeck(CardId.FIENDSMITH_ENGRAVER) &&
+                    !Bot.HasInDeck(CardId.LACRIMA_CT))
                 {
                     return false;
                 }
-                if(CheckRemainInDeck(CardId.FABLED_LURRIE) == 0){ return false; }
+                if(!Bot.HasInDeck(CardId.FABLED_LURRIE)){ return false; }
                 AI.SelectCard(CardId.FABLED_LURRIE);
                 AI.SelectNextCard(CardId.FABLED_LURRIE);
                 return true;
@@ -1443,35 +1367,56 @@ namespace WindBot.Game.AI.Decks
         {
             if (Card.Location != CardLocation.Grave) return false;
             if (Bot.HasInMonstersZoneOrInGraveyard(CardId.FIENDSMITHS_DESIRAE) || Bot.HasInBanished(CardId.FIENDSMITHS_DESIRAE)) return false;
+            if (!Enemy.MonsterZone.Any(c => c != null && c.IsMonster())) return false;
             AI.SelectCard(CardId.FIENDSMITHS_DESIRAE);
             return DontSelfNG();
+        }
+
+        private bool ValidDesiraeReturnTargetPredicate(ClientCard card)
+        {
+            return !card.IsCode(CardId.FIENDSMITHS_DESIRAE) && card.HasAttribute(CardAttribute.Light) && card.HasRace(CardRace.Fiend);
         }
 
         private bool ActDesirae()
         {
             if (Card.Location != CardLocation.Grave) {return false; }
+            bool hasLightFiend = Bot.Graveyard.Any(ValidDesiraeReturnTargetPredicate);
+            if (!hasLightFiend) return false;
             ClientCard target = GetBestEnemyCard(onlyFaceup: true, canBeTarget: true, checkGrave: false);
             if (target == null) return false;
-            if (Bot.HasInGraveyard(CardId.FIENDSMITHS_REQUIEM))
+            List<int> targetPreferenceOrder = new List<int>() {
+                CardId.FIENDSMITHS_REQUIEM, CardId.MOON_OF_THE_CLOSED_HEAVEN,
+                CardId.FABLED_LURRIE, CardId.LACRIMA_CT
+            };
+            // If we haven't summoned Necroquip but have the required Materials don't send it back with Desirae
+            if (!necroquipSummoned && Bot.HasInMonstersZone(CardId.LACRIMA_CT) && Bot.HasInGraveyard(CardId.FIENDSMITHS_REQUIEM))
             {
-                AI.SelectCard(CardId.FIENDSMITHS_REQUIEM);
-                AI.SelectNextCard(target);
-                return true;
+                targetPreferenceOrder.Remove(CardId.FIENDSMITHS_REQUIEM);
             }
-            AI.SelectCard(target);
+            int preferredLightFiend = targetPreferenceOrder.FirstOrDefault(c => Bot.HasInGraveyard(c));
+            if (preferredLightFiend != 0)
+            {
+                AI.SelectCard(preferredLightFiend);
+            } 
+            else
+            {
+                ClientCard lightFiend = Bot.Graveyard.FirstOrDefault(ValidDesiraeReturnTargetPredicate);
+                AI.SelectCard(lightFiend.Id);
+            }
+            AI.SelectNextCard(target);
             return true;
         }
 
         private bool ActRequiemMZ()
         {
             if (Card.Location != CardLocation.MonsterZone) { return false; }
-            if (Bot.HasInHand(CardId.LACRIMA_CT) || CheckRemainInDeck(CardId.LACRIMA_CT) > 0)
+            if (Bot.HasInHand(CardId.LACRIMA_CT) || Bot.HasInDeck(CardId.LACRIMA_CT))
             { 
                 AI.SelectCard(CardId.LACRIMA_CT);
                 AI.SelectPosition(CardPosition.FaceUpDefence);
                 return true; 
             }
-            else if (Bot.HasInHand(CardId.FIENDSMITH_ENGRAVER) || CheckRemainInDeck(CardId.FIENDSMITH_ENGRAVER) > 0)
+            else if (Bot.HasInHand(CardId.FIENDSMITH_ENGRAVER) || Bot.HasInDeck(CardId.FIENDSMITH_ENGRAVER))
             {
                 AI.SelectCard(CardId.FIENDSMITH_ENGRAVER);
                 AI.SelectPosition(CardPosition.FaceUpDefence);
@@ -1482,13 +1427,27 @@ namespace WindBot.Game.AI.Decks
 
         private bool ActRequiemEQ()
         {
-            if (!HasInExtra(CardId.NECROQUIP)) { return false; }
             if (Card.Location != CardLocation.Grave) { return false; }
-            if (Bot.HasInMonstersZone(CardId.LACRIMA_CT))
-            {   
-                AI.SelectCard(CardId.LACRIMA_CT);
-                return true; 
+            // Use Requiem to go into Necroquip for Caesar
+            if (HasInExtra(CardId.NECROQUIP)) 
+            {
+                if (Bot.HasInMonstersZone(CardId.LACRIMA_CT))
+                {
+                    AI.SelectCard(CardId.LACRIMA_CT);
+                    return true;
+                }
+                else if (Bot.HasInMonstersZone(CardId.FIENDSMITH_ENGRAVER))
+                {
+                    AI.SelectCard(CardId.FIENDSMITH_ENGRAVER);
+                    return true;
+                }
+                else if (Bot.HasInMonstersZone(CardId.FABLED_LURRIE))
+                {
+                    AI.SelectCard(CardId.FABLED_LURRIE);
+                    return true;
+                }
             }
+            // Use Requiem to enable Engraver to send opponent monster to GY
             else if (Bot.HasInMonstersZone(CardId.FIENDSMITH_ENGRAVER))
             {
                 AI.SelectCard(CardId.FIENDSMITH_ENGRAVER);
@@ -1499,18 +1458,38 @@ namespace WindBot.Game.AI.Decks
 
         private bool SSNecroquip()
         {
-            if (Bot.HasInSpellZone(CardId.FIENDSMITHS_REQUIEM) && Bot.HasInMonstersZone(CardId.LACRIMA_CT))
+            if (!Bot.HasInSpellZone(CardId.FIENDSMITHS_REQUIEM)) return false;
+
+            bool engraverOnField = Bot.HasInMonstersZone(CardId.FIENDSMITH_ENGRAVER);
+            if (Bot.HasInMonstersZone(CardId.LACRIMA_CT))
             {
+                necroquipSummoned = true;
                 AI.SelectCard(CardId.FIENDSMITHS_REQUIEM);
                 AI.SelectNextCard(CardId.LACRIMA_CT);
                 return true;
             }
-            else if (Bot.HasInSpellZone(CardId.FIENDSMITHS_REQUIEM) && Bot.HasInMonstersZone(CardId.FIENDSMITH_ENGRAVER))
+            else if (engraverOnField && (!engraverGYActivated || DefaultCheckWhetherCardIdIsNegated(CardId.FIENDSMITH_ENGRAVER)))
             {
+                necroquipSummoned = true;
                 AI.SelectCard(CardId.FIENDSMITHS_REQUIEM);
                 AI.SelectNextCard(CardId.FIENDSMITH_ENGRAVER);
                 return true;
             }
+            else if (Bot.HasInMonstersZone(CardId.FABLED_LURRIE))
+            {
+                necroquipSummoned = true;
+                AI.SelectCard(CardId.FIENDSMITHS_REQUIEM);
+                AI.SelectNextCard(CardId.FABLED_LURRIE);
+                return true;
+            }
+            else if (engraverOnField)
+            {
+                necroquipSummoned = true;
+                AI.SelectCard(CardId.FIENDSMITHS_REQUIEM);
+                AI.SelectNextCard(CardId.FIENDSMITH_ENGRAVER);
+                return true;
+            }
+
             return false;
         }
 
@@ -1560,11 +1539,57 @@ namespace WindBot.Game.AI.Decks
             return false;
         }
 
+        private bool ActEngraverField()
+        {
+            if (Card.Location != CardLocation.MonsterZone) return false;
+            if (!Bot.HasInSpellZone(CardId.FIENDSMITHS_REQUIEM)) return false;
+
+            ClientCard target = GetBestEnemyMonster(onlyFaceup: false, canBeTarget: true);
+            if (target != null)
+            {
+                engraverFieldActivated = true;
+                AI.SelectCard(CardId.FIENDSMITHS_REQUIEM);
+                AI.SelectNextCard(target);
+                return true;
+            }
+
+            return false;
+        }
+
         private bool ActEngraverGY()
         {
             if (Card.Location != CardLocation.Grave) return false;
-            if (Bot.HasInGraveyard(CardId.FABLED_LURRIE)) { AI.SelectCard(CardId.FABLED_LURRIE); return true; }
-            else if (Bot.HasInGraveyard(CardId.MOON_OF_THE_CLOSED_HEAVEN)) { AI.SelectCard(CardId.MOON_OF_THE_CLOSED_HEAVEN); return true; }
+            bool requiemInGrave = Bot.HasInGraveyard(CardId.FIENDSMITHS_REQUIEM);
+            if (requiemInGrave && !requiemSummoned)
+            {
+                engraverGYActivated = true;
+                AI.SelectCard(CardId.FIENDSMITHS_REQUIEM);
+                return true;
+            }
+            else if (Bot.HasInGraveyard(CardId.FABLED_LURRIE))
+            {
+                engraverGYActivated = true;
+                AI.SelectCard(CardId.FABLED_LURRIE);
+                return true;
+            }
+            else if (Bot.HasInGraveyard(CardId.MOON_OF_THE_CLOSED_HEAVEN))
+            {
+                engraverGYActivated = true;
+                AI.SelectCard(CardId.MOON_OF_THE_CLOSED_HEAVEN);
+                return true;
+            }
+            else if (requiemInGrave && !Bot.HasInGraveyard(CardId.LACRIMA_CT))
+            {
+                engraverGYActivated = true;
+                AI.SelectCard(CardId.FIENDSMITHS_REQUIEM);
+                return true;
+            }
+            else if (Bot.HasInGraveyard(CardId.FIENDSMITHS_DESIRAE))
+            {
+                engraverGYActivated = true;
+                AI.SelectCard(CardId.FIENDSMITHS_DESIRAE);
+                return true;
+            }
             return false;
         }
 
@@ -1857,13 +1882,13 @@ namespace WindBot.Game.AI.Decks
         }
         private bool ActYamaMZ()
         {
-            if (CheckRemainInDeck(CardId.SHARVARA) == 0 ) return false;
+            if (!Bot.HasInDeck(CardId.SHARVARA) ) return false;
             AI.SelectCard(CardId.SHARVARA);
             return true;
         }
         private bool SSRequiem()
         {
-            if (CheckRemainInDeck(CardId.LACRIMA_CT) == 0 && !Bot.HasInHand(CardId.LACRIMA_CT)) { return false; }
+            if (!Bot.HasInDeck(CardId.LACRIMA_CT) && !Bot.HasInHand(CardId.LACRIMA_CT)) { return false; }
             requiemSummoned = true;
             return true;
         }
@@ -2011,18 +2036,16 @@ namespace WindBot.Game.AI.Decks
         private bool YesNoFor(int desc, int cardId, int idx)
         {
             var info = Duel.GetCurrentSolvingChainInfo();
-            var card = Duel.GetCurrentSolvingChainCard();
             // ต้องทั้ง: คำอธิบายตรง + การ์ดบน chain ตอนนี้ตรง
             return desc == Util.GetStringId(cardId, idx)
-                   && ((info != null && info.IsCode(cardId)) || (card != null && card.IsCode(cardId)));
+                   && info != null && info.IsActivateCode(cardId);
         }
         public override bool OnSelectYesNo(int desc)
         {
             Logger.DebugWriteLine($"[DEBUG] OnSelectYesNo: desc={desc}");
             var info = Duel.GetCurrentSolvingChainInfo();
-            var solving = Duel.GetCurrentSolvingChainCard();
             DumpChain("OnSelectYesNo");
-            Logger.DebugWriteLine($"[THRONE] OnSelectYesNo desc={desc} stage={_throneStage} solving={CardStr(solving)}");
+            Logger.DebugWriteLine($"[THRONE] OnSelectYesNo desc={desc} stage={_throneStage} solving={CardStr(info?.RelatedCard)}");
             if (IsEnemyMurakumoSolving())
             {
                 bool discard = ShouldDiscardForMurakumo();
@@ -2036,7 +2059,7 @@ namespace WindBot.Game.AI.Decks
             { return false; }
             // --- Nightmare Throne ---
             // idx อาจต่างกันตามสคริปต์ แต่แนวคิดคือ anchor กับ desc+solving เสมอ
-            if (solving != null && solving.IsCode(CardId.NIGHTMARE_THRONE))
+            if (info != null && info.IsActivateCode(CardId.NIGHTMARE_THRONE))
             {
                 // เปิด map ช่วย debug ให้เห็นว่า desc ตรง index ไหนจริง ๆ
                 DebugThroneDescMap(desc);
@@ -2074,8 +2097,8 @@ namespace WindBot.Game.AI.Decks
                 var best = GetBestEnemyCard();
                 return best != null && ShouldVarudrasDetachForPop(best);
             }
-            if (solving != null
-                && solving.IsCode(CardId.VARUDASN_FINAL_BRINGER)
+            if (info != null
+                && info.IsActivateCode(CardId.VARUDASN_FINAL_BRINGER)
                 && Duel.CurrentChain.Count > 0) // แปลว่าอยู่ใน e1 ไม่ใช่ e2
             {
                 // มีเป้าศัตรูให้ทำลายไหม?
@@ -2107,8 +2130,8 @@ namespace WindBot.Game.AI.Decks
             bool isReleasePrompt =
             hint == (long)HintMsg.Release ||
             hint.ToString().ToLower().Contains("release"); // กันเหนียว
-            var solving = Duel.GetCurrentSolvingChainCard();
-            if (IsEnemyMurakumoSolving() && cards != null && cards.Count > 0 && (hint == HintMsg.Discard || 
+            var solving = Duel.GetCurrentSolvingChainInfo();
+            if (IsEnemyMurakumoSolving() && cards != null && cards.Count > 0 && (hint == HintMsg.Discard ||
                 hint == HintMsg.ToGrave) && cards.All(c => c != null && c.Controller == 0 && c.Location == CardLocation.Hand))
             {
                 var discardOrder = cards
@@ -2130,7 +2153,7 @@ namespace WindBot.Game.AI.Decks
             if (cards != null && cards.Count > 0)
             {
                 // === Throne ===
-                if (_throneStage == ThroneStage.Searching && solving != null && solving.IsCode(CardId.NIGHTMARE_THRONE) && !throneSearched && cards != null && cards.Count > 0)
+                if (_throneStage == ThroneStage.Searching && solving != null && solving.IsActivateCode(CardId.NIGHTMARE_THRONE) && !throneSearched && cards != null && cards.Count > 0)
                 {
                     throneSearched = true;
                     _throneStage = ThroneStage.AwaitDestroyPrompt;
@@ -2147,7 +2170,7 @@ namespace WindBot.Game.AI.Decks
                     return new[] { chosen };
                 }
                 // === SPIRIT GATES selections ===
-                if (solving != null && solving.Id == CardId.SPIRIT_GATES && cards != null && cards.Count > 0)
+                if (solving != null && solving.ActivateId == CardId.SPIRIT_GATES && cards != null && cards.Count > 0)
                 {
                     // 2.1: เลือก Continuous Spell จากสุสาน (Recycle)
                     if (_gateWantsRecycle)
@@ -2220,7 +2243,7 @@ namespace WindBot.Game.AI.Decks
                     }
                 }
                 // === Throne: เลือกการ์ดที่ค้นเจอ ===
-                if (solving != null && solving.Id == CardId.NIGHTMARE_THRONE && _throneStage == ThroneStage.Searching && thronePending && !throneSearched)
+                if (solving != null && solving.ActivateId == CardId.NIGHTMARE_THRONE && _throneStage == ThroneStage.Searching && thronePending && !throneSearched)
                 {
                     throneSearched = true;
                     _throneStage = ThroneStage.AwaitDestroyPrompt;
@@ -2245,7 +2268,7 @@ namespace WindBot.Game.AI.Decks
                     // ปล่อยให้ base ตัดสินใจ หรือจะ return null ก็ได้ตามฐานของคุณ
                 }
                 // --- Varudras: เลือกเป้าหมายทำลาย ---
-                if (solving != null && solving.Id == CardId.VARUDASN_FINAL_BRINGER && hint == 502 && cards != null && cards.Count > 0)
+                if (solving != null && solving.ActivateId == CardId.VARUDASN_FINAL_BRINGER && hint == 502 && cards != null && cards.Count > 0)
                 {
                     // พยายามเลือกฝั่งศัตรูก่อน (คัดใบที่อันตราย/ป่วนที่สุด)
                     var enemyPick = cards
@@ -2257,7 +2280,7 @@ namespace WindBot.Game.AI.Decks
                     return new[] { cards[0] }; // fallback
                 }
                 // --- Abomination: เลือกเป้าหมายทำลาย ---
-                if (solving != null && solving.Id == CardId.UNCHAINDEDABOMINATION && hint == 502 && cards != null && cards.Count > 0)
+                if (solving != null && solving.ActivateId == CardId.UNCHAINDEDABOMINATION && hint == 502 && cards != null && cards.Count > 0)
                 {
                     // พยายามเลือกฝั่งศัตรูก่อน (คัดใบที่อันตราย/ป่วนที่สุด)
                     var enemyPick = cards
@@ -2269,7 +2292,7 @@ namespace WindBot.Game.AI.Decks
                     return new[] { cards[0] }; // fallback
                 }
                 // --- Rage Quick Link ---
-                if (solving != null && solving.IsCode(CardId.UNCHAINED_SOUL_OF_RAGE) && cards.Any(c => c != null && c.Location == CardLocation.Extra))
+                if (solving != null && solving.IsActivateCode(CardId.UNCHAINED_SOUL_OF_RAGE) && cards.Any(c => c != null && c.Location == CardLocation.Extra))
                 {
                     // 1) เลือก S:P Little Knight ก่อนเสมอ ถ้ามี
                     var pickSP = cards.FirstOrDefault(c => c != null && c.Id == CardId.SP_LITTLE_KNIGHT);
@@ -2326,12 +2349,9 @@ namespace WindBot.Game.AI.Decks
         private bool IsEnemyMurakumoSolving()
         {
             var info = Duel.GetCurrentSolvingChainInfo();
-            var solving = Duel.GetCurrentSolvingChainCard();
-
             return info != null
                 && info.ActivatePlayer == 1
-                && solving != null
-                && solving.IsCode(CardId.AME_NO_MURAKUMO_NO_MITSURUGI);
+                && info.IsActivateCode(CardId.AME_NO_MURAKUMO_NO_MITSURUGI);
         }
 
         private bool ShouldDiscardForMurakumo()
@@ -2357,10 +2377,10 @@ namespace WindBot.Game.AI.Decks
                 var c = Duel.CurrentChain[i];
                 Logger.DebugWriteLine($"  [{i}] {CardStr(c)}");
             }
-            var solving = Duel.GetCurrentSolvingChainCard();
+            var solving = Duel.GetCurrentSolvingChainInfo();
             if (solving != null)
             {
-                Logger.DebugWriteLine($"  -> Solving: {CardStr(solving)}  ActivateDescription={ActivateDescription}");
+                Logger.DebugWriteLine($"  -> Solving: {CardStr(solving.RelatedCard)}  ActivateDescription={solving.ActivateDescription}");
             }
             if (Duel.ChainTargets != null && Duel.ChainTargets.Count > 0)
             {

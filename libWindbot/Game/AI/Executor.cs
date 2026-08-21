@@ -153,7 +153,14 @@ namespace WindBot.Game.AI
             return null;
         }
 
-        public virtual IList<ClientCard> OnSelectSum(IList<ClientCard> cards, int sum, int min, int max, int hint, bool mode)
+        public virtual IList<ClientCard> OnSelectTribute(IList<ClientCard> cards, int min, int max, int hint, bool cancelable)
+        {
+            // For overriding
+            return null;
+        }
+
+        public virtual IList<ClientCard> OnSelectSum(IList<ClientCard> cards, IList<ClientCard> mandatoryCards,
+            int sum, int min, int max, int hint, bool exactEqual)
         {
             // For overriding
             return null;
@@ -165,7 +172,8 @@ namespace WindBot.Game.AI
             return null;
         }
 
-        public virtual IList<ClientCard> OnSelectSynchroMaterial(IList<ClientCard> cards, int sum, int min, int max)
+        public virtual IList<ClientCard> OnSelectSynchroMaterial(IList<ClientCard> cards,
+            IList<ClientCard> mandatoryCards, int sum, int min, int max)
         {
             // For overriding
             return null;
@@ -183,13 +191,14 @@ namespace WindBot.Game.AI
             return null;
         }
 
-        public virtual IList<ClientCard> OnSelectRitualTribute(IList<ClientCard> cards, int sum, int min, int max)
+        public virtual IList<ClientCard> OnSelectRitualTribute(IList<ClientCard> cards,
+            IList<ClientCard> mandatoryCards, int sum, int min, int max, bool exactEqual)
         {
             // For overriding
             return null;
         }
 
-        public virtual IList<ClientCard> OnSelectPendulumSummon(IList<ClientCard> cards, int max)
+        public virtual IList<ClientCard> OnSelectPendulumSummon(IList<ClientCard> cards, int min, int max)
         {
             // For overriding
             return null;
@@ -222,6 +231,27 @@ namespace WindBot.Game.AI
             return 0;
         }
 
+        /// <summary>
+        /// Selects zones from a full-field protocol bitmap. 
+        /// Bits 0-6 and 8-15 represent this client's monster and spell/trap zones; 
+        /// bits 16-22 and 24-31 represent the opponent's corresponding zones.
+        /// Bits 7 and 23 are unused.
+        /// 
+        /// Despite the name, this callback is not limited to effects that disable zones.
+        /// YGOPro card scripts also use Duel.SelectDisableField as a general zone picker because
+        /// it does not expose a dedicated API for every kind of placement. Override this method
+        /// when a card's movement or placement effect needs to control the selected zone.
+        /// </summary>
+        /// <returns>
+        /// Zero to use the default selection; otherwise exactly Math.Max(1, count) available
+        /// zone bits. The mirrored extra monster zone pairs (5, 22) and (6, 21) cannot both be selected.
+        /// </returns>
+        public virtual uint OnSelectDisfield(int hint, int count, uint available)
+        {
+            // For overriding
+            return 0u;
+        }
+
         public virtual CardPosition OnSelectPosition(int cardId, IList<CardPosition> positions)
         {
             // Overrided in DefaultExecutor
@@ -232,6 +262,16 @@ namespace WindBot.Game.AI
         {
             // Overrided in DefaultExecutor
             return false;
+        }
+
+        /// <summary>
+        /// Called when the AI has to decide whether the pending attack should be a direct attack.
+        /// </summary>
+        /// <param name="attacker">The monster selected to attack.</param>
+        /// <param name="preselectedAnswer">Whether the preceding battle decision preselected a direct attack.</param>
+        public virtual bool OnSelectBattleDirectAttack(ClientCard attacker, bool preselectedAnswer)
+        {
+            return preselectedAnswer;
         }
 
         /// <summary>
@@ -260,6 +300,15 @@ namespace WindBot.Game.AI
         /// Used on monsters that can only special summoned once per turn.
         /// </summary>
         public virtual void OnSpSummoned()
+        {
+            // For overriding
+            return;
+        }
+
+        /// <summary>
+        /// Called when a monster's special summon is attempted.
+        /// </summary>
+        public virtual void OnSpSummoning()
         {
             // For overriding
             return;
@@ -319,7 +368,7 @@ namespace WindBot.Game.AI
 
         private bool DefaultNoExecutor()
         {
-            return Executors.All(exec => exec.Type != Type || exec.CardId != Card.Id);
+            return Executors.All(exec => exec.Type != Type || !Card.IsOriginalCode(exec.CardId));
         }
     }
 }

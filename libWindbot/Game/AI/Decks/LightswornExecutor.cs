@@ -103,13 +103,13 @@ namespace WindBot.Game.AI.Decks
 
             AddExecutor(ExecutorType.Summon, CardId.Goblindbergh, GoblindberghSummon);
             AddExecutor(ExecutorType.Summon, CardId.Lumina, LuminaSummon);
-            AddExecutor(ExecutorType.Summon, CardId.Lyla, LylaSummon);
+            AddExecutor(ExecutorType.Summon, CardId.Lyla, LylaSummonFirst);
             AddExecutor(ExecutorType.Summon, CardId.Raiden, RaidenSummon);
             AddExecutor(ExecutorType.Summon, CardId.Minerva, MinervaSummon);
             AddExecutor(ExecutorType.Summon, CardId.Garoth);
+            AddExecutor(ExecutorType.Summon, CardId.Lyla);
             AddExecutor(ExecutorType.Summon, CardId.PerformageTrickClown, Level4ExtenderSummon);
             AddExecutor(ExecutorType.Summon, CardId.ThousandBlades, Level4ExtenderSummon);
-            AddExecutor(ExecutorType.MonsterSet, CardId.Ryko, RykoSet);
 
             AddExecutor(ExecutorType.SpSummon, CardId.EvilswarmExcitonKnight, EvilswarmExcitonKnightSummon);
             AddExecutor(ExecutorType.SpSummon, CardId.TrishulaDragonOfTheIceBarrier, TrishulaSummon);
@@ -124,6 +124,12 @@ namespace WindBot.Game.AI.Decks
             AddExecutor(ExecutorType.SpSummon, CardId.PSYFramelordZeta, PSYFramelordZetaSummon);
             AddExecutor(ExecutorType.SpSummon, CardId.PSYFramelordOmega, PSYFramelordOmegaSummon);
             AddExecutor(ExecutorType.SpSummon, CardId.DanteTravelerOfTheBurningAbyss, DanteSummon);
+
+            AddExecutor(ExecutorType.MonsterSet, CardId.Ryko, RykoSet);
+            AddExecutor(ExecutorType.MonsterSet, CardId.PerformageTrickClown);
+            AddExecutor(ExecutorType.MonsterSet, CardId.ThousandBlades);
+            AddExecutor(ExecutorType.MonsterSet, CardId.GlowUpBulb);
+            AddExecutor(ExecutorType.MonsterSet, CardId.Raiden);
 
             AddExecutor(ExecutorType.Repos, DefaultMonsterRepos);
         }
@@ -149,14 +155,14 @@ namespace WindBot.Game.AI.Decks
         {
             if (card != null)
             {
-                ClientCard solvingCard = Duel.GetCurrentSolvingChainCard();
+                ChainInfo solvingChain = Duel.GetCurrentSolvingChainInfo();
                 if (previousControler == 1 &&
                     previousLocation == (int)CardLocation.Hand &&
                     currentControler == 1 &&
                     currentLocation == (int)CardLocation.Removed &&
-                    solvingCard != null &&
-                    solvingCard.Controller == 0 &&
-                    solvingCard.IsCode(CardId.PSYFramelordOmega))
+                    solvingChain != null &&
+                    solvingChain.ActivatePlayer == 0 &&
+                    solvingChain.IsActivateCode(CardId.PSYFramelordOmega))
                 {
                     _omegaBanishedEnemyCard = card;
                 }
@@ -173,12 +179,12 @@ namespace WindBot.Game.AI.Decks
         public override IList<ClientCard> OnSelectCard(
             IList<ClientCard> cards, int min, int max, int hint, bool cancelable)
         {
-            ClientCard solvingCard = Duel.GetCurrentSolvingChainCard();
-            if (solvingCard != null && solvingCard.Controller == 0)
+            ChainInfo solvingChain = Duel.GetCurrentSolvingChainInfo();
+            if (solvingChain != null && solvingChain.ActivatePlayer == 0)
             {
-                if (solvingCard.IsCode(CardId.MinervaTheExalted) && hint == HintMsg.Destroy ||
-                    solvingCard.IsCode(CardId.Ryko) && hint == HintMsg.Destroy ||
-                    solvingCard.IsCode(CardId.TrishulaDragonOfTheIceBarrier) && hint == HintMsg.Remove)
+                if (solvingChain.IsActivateCode(CardId.MinervaTheExalted) && hint == HintMsg.Destroy ||
+                    solvingChain.IsActivateCode(CardId.Ryko) && hint == HintMsg.Destroy ||
+                    solvingChain.IsActivateCode(CardId.TrishulaDragonOfTheIceBarrier) && hint == HintMsg.Remove)
                 {
                     List<ClientCard> targets = GetEnemyTargetPriority(cards);
                     if (targets.Count > 0)
@@ -191,9 +197,9 @@ namespace WindBot.Game.AI.Decks
 
         public override bool OnSelectYesNo(int desc)
         {
-            ClientCard solvingCard = Duel.GetCurrentSolvingChainCard();
-            if (solvingCard != null && solvingCard.Controller == 0 &&
-                solvingCard.IsCode(CardId.MinervaTheExalted, CardId.Ryko))
+            ChainInfo solvingChain = Duel.GetCurrentSolvingChainInfo();
+            if (solvingChain != null && solvingChain.ActivatePlayer == 0 &&
+                solvingChain.IsActivateCode(CardId.MinervaTheExalted, CardId.Ryko))
             {
                 return Enemy.GetFieldCount() > 0;
             }
@@ -569,10 +575,9 @@ namespace WindBot.Game.AI.Decks
             return true;
         }
 
-        private bool LylaSummon()
+        private bool LylaSummonFirst()
         {
-            return Enemy.GetSpellCount() > 0 ||
-                Bot.GetMonsters().Any(card => card.IsFaceup() && card.Level == 4);
+            return Enemy.GetSpellCount() > 0;
         }
 
         private bool LylaEffect()
@@ -644,7 +649,7 @@ namespace WindBot.Game.AI.Decks
 
         private bool MinervaEffect()
         {
-            if (ActivateDescription == Util.GetStringId(CardId.Minerva, 0))
+            if (ActivateDescription == -1 || ActivateDescription == Util.GetStringId(CardId.Minerva, 0))
                 AI.SelectCard(CardId.JudgmentDragon);
             return true;
         }
@@ -657,7 +662,6 @@ namespace WindBot.Game.AI.Decks
         private bool ThousandBladesEffect()
         {
             return Card.Location == CardLocation.Grave &&
-                ActivateDescription == Util.GetStringId(CardId.ThousandBlades, 1) &&
                 !DefaultCheckWhetherCardIsNegated(Card);
         }
 
@@ -918,6 +922,8 @@ namespace WindBot.Game.AI.Decks
 
         private bool Number101SilentHonorARKEffect()
         {
+            if (ActivateDescription == 96) return true;
+
             if (DefaultCheckWhetherCardIsNegated(Card))
                 return false;
 

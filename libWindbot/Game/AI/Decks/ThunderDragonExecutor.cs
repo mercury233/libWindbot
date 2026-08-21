@@ -190,64 +190,7 @@ namespace WindBot.Game.AI.Decks
             AddExecutor(ExecutorType.Repos, DefaultMonsterRepos);
 
         }
-        #region DeckCheck
-        public int CheckRemainInDeck(int id)
-        {
-            switch (id)
-            {
-                case CardId.ThunderDragonlord:
-                    return Bot.GetRemainingCount(CardId.ThunderDragonlord, 1);
-                case CardId.TheBystialLubellion:
-                    return Bot.GetRemainingCount(CardId.TheBystialLubellion, 2);
-                case CardId.TheChaosCreator:
-                    return Bot.GetRemainingCount(CardId.TheChaosCreator, 1);
-                case CardId.BystialDruiswurm:
-                    return Bot.GetRemainingCount(CardId.BystialDruiswurm, 2);
-                case CardId.BystialMagnamhut:
-                    return Bot.GetRemainingCount(CardId.BystialMagnamhut, 2);
-                case CardId.ThunderDragonroar:
-                    return Bot.GetRemainingCount(CardId.ThunderDragonroar, 2);
-                case CardId.ThunderDragonhawk:
-                    return Bot.GetRemainingCount(CardId.ThunderDragonhawk, 2);
-                case CardId.NormalThunderDragon:
-                    return Bot.GetRemainingCount(CardId.NormalThunderDragon, 3);
-                case CardId.ThunderDragondark:
-                    return Bot.GetRemainingCount(CardId.ThunderDragondark, 3);
-                case CardId.BlackDragonCollapserpent:
-                    return Bot.GetRemainingCount(CardId.BlackDragonCollapserpent, 2);
-                case CardId.WhiteDragonWyverburster:
-                    return Bot.GetRemainingCount(CardId.WhiteDragonWyverburster, 2);
-                case CardId.AloofLupine:
-                    return Bot.GetRemainingCount(CardId.AloofLupine, 2);
-                case CardId.BatterymanSolar:
-                    return Bot.GetRemainingCount(CardId.BatterymanSolar, 3);
-                case CardId.AshBlossom:
-                    return Bot.GetRemainingCount(CardId.AshBlossom, 2);
-                case CardId.G:
-                    return Bot.GetRemainingCount(CardId.G, 3);
-                case CardId.DragonBusterDestructionSword:
-                    return Bot.GetRemainingCount(CardId.DragonBusterDestructionSword, 1);
-                case CardId.ThunderDragonmatrix:
-                    return Bot.GetRemainingCount(CardId.ThunderDragonmatrix, 3);
-                case CardId.AllureofDarkness:
-                    return Bot.GetRemainingCount(CardId.AllureofDarkness, 3);
-                case CardId.GoldSarcophagus:
-                    return Bot.GetRemainingCount(CardId.GoldSarcophagus, 1);
-                case CardId.ThunderDragonFusion:
-                    return Bot.GetRemainingCount(CardId.ThunderDragonFusion, 2);
-                case CardId.ChaosSpace:
-                    return Bot.GetRemainingCount(CardId.ChaosSpace, 3);
-                case CardId.CalledbytheGrave:
-                    return Bot.GetRemainingCount(CardId.CalledbytheGrave, 2);
-                case CardId.BrandedRegained:
-                    return Bot.GetRemainingCount(CardId.BrandedRegained, 1);
-                case CardId.InfiniteImpermanence:
-                    return Bot.GetRemainingCount(CardId.InfiniteImpermanence, 2);
-                default:
-                    return 0;
-            }
-        }
-        #endregion
+
 
         public override bool OnSelectHand()
         {
@@ -549,9 +492,7 @@ namespace WindBot.Game.AI.Decks
                          || (copy_cards[i].Id == CardId.ThunderDragonmatrix && HasInZoneNoActivate(CardId.ThunderDragonmatrix, CardLocation.MonsterZone)))
                     {
                         if (i <= 0) continue;
-                        ClientCard temp = copy_cards[0];
-                        copy_cards[0] = copy_cards[i];
-                        copy_cards[i] = temp;
+                        (copy_cards[i], copy_cards[0]) = (copy_cards[0], copy_cards[i]);
                     }
                 }
                 return Util.CheckSelectCount(copy_cards, cards, min, max);
@@ -815,14 +756,7 @@ namespace WindBot.Game.AI.Decks
         public int SelectSTPlace(ClientCard card = null, bool avoid_Impermanence = false)
         {
             List<int> list = new List<int> { 0, 1, 2, 3, 4 };
-            int n = list.Count;
-            while (n-- > 1)
-            {
-                int index = Program.Rand.Next(n + 1);
-                int temp = list[index];
-                list[index] = list[n];
-                list[n] = temp;
-            }
+            Util.ShuffleListInPlace(list);
             foreach (int seq in list)
             {
                 int zone = (int)System.Math.Pow(2, seq);
@@ -873,11 +807,11 @@ namespace WindBot.Game.AI.Decks
         {
             int remaining = THUNDER_COUNTD;
             if (isOnlyTunder) remaining -= 4;
-            remaining = remaining - Bot.Hand.Count(card => card != null && card.HasRace(CardRace.Thunder) && !card.IsExtraCard() && !(isOnlyTunder & !Card.HasSetcode(0x11c)));
-            remaining = remaining - Bot.SpellZone.Count(card => card != null && card.HasRace(CardRace.Thunder) && !card.IsExtraCard() && !(isOnlyTunder & !Card.HasSetcode(0x11c)));
-            remaining = remaining - Bot.MonsterZone.Count(card => card != null && card.HasRace(CardRace.Thunder) && !card.IsExtraCard() && !(isOnlyTunder & !Card.HasSetcode(0x11c)));
-            remaining = remaining - Bot.Graveyard.Count(card => card != null && card.HasRace(CardRace.Thunder) && !card.IsExtraCard() && !(isOnlyTunder & !Card.HasSetcode(0x11c)));
-            remaining = remaining - Bot.Banished.Count(card => card != null && card.HasRace(CardRace.Thunder) && !card.IsExtraCard() && !(isOnlyTunder & !Card.HasSetcode(0x11c)));
+            remaining = remaining - Bot.Hand.Count(card => card != null && card.HasRace(CardRace.Thunder) && !card.IsExtraCard() && !(isOnlyTunder & !card.HasSetcode(0x11c)));
+            remaining = remaining - Bot.SpellZone.Count(card => card != null && card.HasRace(CardRace.Thunder) && !card.IsExtraCard() && !(isOnlyTunder & !card.HasSetcode(0x11c)));
+            remaining = remaining - Bot.MonsterZone.Count(card => card != null && card.HasRace(CardRace.Thunder) && !card.IsExtraCard() && !(isOnlyTunder & !card.HasSetcode(0x11c)));
+            remaining = remaining - Bot.Graveyard.Count(card => card != null && card.HasRace(CardRace.Thunder) && !card.IsExtraCard() && !(isOnlyTunder & !card.HasSetcode(0x11c)));
+            remaining = remaining - Bot.Banished.Count(card => card != null && card.HasRace(CardRace.Thunder) && !card.IsExtraCard() && !(isOnlyTunder & !card.HasSetcode(0x11c)));
             return (remaining < 0) ? 0 : remaining;
         }
         private int GetLinkMark(int cardId)
@@ -1106,7 +1040,8 @@ namespace WindBot.Game.AI.Decks
             if (ActivateDescription == Util.GetStringId(CardId.PredaplantVerteAnaconda, 1))
             {
                 if (DefaultCheckWhetherCardIsNegated(Card)) return false;
-                if (CheckRemainInDeck(CardId.ThunderDragonFusion) <= 0) return false;
+                if (Bot.LifePoints <= 2000) return false;
+                if (!Bot.HasInDeck(CardId.ThunderDragonFusion)) return false;
                 if (Bot.GetMonstersInMainZone().Count > 4 && Bot.GetMonstersInMainZone().Count(card => card != null && !card.IsExtraCard() && card.HasSetcode(0x11c) && card.HasType(CardType.Monster) && card.IsFaceup()) <= 0) return false;
                 List<ClientCard> g_card = Bot.Graveyard.ToList();
                 List<ClientCard> b_card = Bot.Banished.ToList();
@@ -1176,11 +1111,11 @@ namespace WindBot.Game.AI.Decks
             if (Duel.Phase == DuelPhase.End)
             {
                 int count = Bot.Graveyard.Count(card => card != null && card.HasRace(CardRace.Thunder));
-                if ((Bot.HasInGraveyard(CardId.ThunderDragonroar) || Bot.HasInGraveyard(CardId.ThunderDragondark) && count > 1) && CheckRemainInDeck(CardId.ThunderDragonFusion) >0 )
+                if ((Bot.HasInGraveyard(CardId.ThunderDragonroar) || Bot.HasInGraveyard(CardId.ThunderDragondark) && count > 1) && Bot.HasInDeck(CardId.ThunderDragonFusion) )
                     AI.SelectCard(CardId.ThunderDragonFusion);
-                else if(!Bot.HasInGraveyard(CardId.ThunderDragonroar) && CheckRemainInDeck(CardId.ThunderDragonroar) > 0)
+                else if(!Bot.HasInGraveyard(CardId.ThunderDragonroar) && Bot.HasInDeck(CardId.ThunderDragonroar))
                     AI.SelectCard(CardId.ThunderDragonroar);
-                else if(!Bot.HasInGraveyard(CardId.ThunderDragondark) && CheckRemainInDeck(CardId.ThunderDragondark) > 0)
+                else if(!Bot.HasInGraveyard(CardId.ThunderDragondark) && Bot.HasInDeck(CardId.ThunderDragondark))
                     AI.SelectCard(CardId.ThunderDragondark);
                 else AI.SelectCard(CardId.ThunderDragonmatrix,CardId.NormalThunderDragon,CardId.BatterymanSolar);
                 return true;
@@ -1213,7 +1148,8 @@ namespace WindBot.Game.AI.Decks
         }
         private bool PredaplantVerteAnacondaSummon()
         {
-            if (CheckRemainInDeck(CardId.ThunderDragonFusion) <= 0) return false;
+            if (!Bot.HasInDeck(CardId.ThunderDragonFusion)) return false;
+            if (Bot.LifePoints <= 2000) return false;
             List<ClientCard> g_card = Bot.Graveyard.ToList();
             List<ClientCard> b_card = Bot.Banished.ToList();
             g_card.AddRange(b_card);
@@ -1384,9 +1320,7 @@ namespace WindBot.Game.AI.Decks
                     {
                         if (i > 0)
                         {
-                            ClientCard temp = link_materials[0];
-                            link_materials[0] = link_materials[i];
-                            link_materials[i] = temp;
+                            (link_materials[i], link_materials[0]) = (link_materials[0], link_materials[i]);
                         }
                         index = i;
                         break;
@@ -1433,7 +1367,7 @@ namespace WindBot.Game.AI.Decks
                 cardsid.Add(CardId.ThunderDragonlord);
             }
             if (!Bot.HasInSpellZone(CardId.BrandedRegained, true, true) 
-                || Bot.GetCountCardInZone(Bot.GetGraveyardMonsters(),CardId.BystialMagnamhut) + Bot.GetCountCardInZone(Bot.GetGraveyardMonsters(), CardId.BystialDruiswurm) > 1)
+                || Bot.GetGraveyardMonsters().GetCardCount(new[] { CardId.BystialMagnamhut, CardId.BystialDruiswurm }) > 1)
             {
                 cardsid.Add(CardId.BystialMagnamhut);
                 cardsid.Add(CardId.BystialDruiswurm);
@@ -1526,9 +1460,7 @@ namespace WindBot.Game.AI.Decks
         }
         private bool UnionCarrierEffect_2()
         { 
-                IList<int> cardsId = new List<int>();
-                cardsId.Add(CardId.ThunderDragonColossus);
-                cardsId.Add(CardId.TheChaosCreator);
+                IList<int> cardsId = new List<int>() { CardId.ThunderDragonColossus, CardId.TheChaosCreator };
                 List<ClientCard> cards_1 = Bot.GetMonsters().Where(card => card != null && card.IsFaceup() && (card.HasAttribute(CardAttribute.Dark) || card.HasRace(CardRace.Dragon))).ToList();
                 if (cards_1.Count <= 0)
                 {
@@ -1553,7 +1485,7 @@ namespace WindBot.Game.AI.Decks
         }
         private bool StrikerDragonSummon()
         {
-            if ((summon_WhiteDragonWyverburster && summon_BlackDragonCollapserpent) || CheckRemainInDeck(CardId.WhiteDragonWyverburster) <= 0 || CheckRemainInDeck(CardId.BlackDragonCollapserpent) <= 0) return false;
+            if ((summon_WhiteDragonWyverburster && summon_BlackDragonCollapserpent) || !Bot.HasInDeck(CardId.WhiteDragonWyverburster) || !Bot.HasInDeck(CardId.BlackDragonCollapserpent)) return false;
             return Bot.GetMonsters().Count(card => card != null && card.HasRace(CardRace.Dragon) && card.Level > 1) > 0;
         }
         private bool DefaultSummon()
@@ -1671,7 +1603,7 @@ namespace WindBot.Game.AI.Decks
         private bool BlackDragonCollapserpentSummon()
         {
             if (Bot.Graveyard.Count(card => card != null && card.HasAttribute(CardAttribute.Light)) <= 1
-                && Bot.HasInGraveyard(CardId.TheBystialLubellion) && CheckRemainInDeck(CardId.BrandedRegained) > 0 && !summon_TheBystialLubellion)
+                && Bot.HasInGraveyard(CardId.TheBystialLubellion) && Bot.HasInDeck(CardId.BrandedRegained) && !summon_TheBystialLubellion)
                 return false;
             return BlackDragonCollapserpentSummon_2();
         }
@@ -1693,7 +1625,7 @@ namespace WindBot.Game.AI.Decks
         }
         private bool UnionCarrierSummon()
         {
-            if (CheckRemainInDeck(CardId.DragonBusterDestructionSword) <= 0 || !Bot.HasInMonstersZone(CardId.ThunderDragonColossus,false,false,true)) return false;
+            if (!Bot.HasInMonstersZone(CardId.ThunderDragonColossus,false,false,true)) return false;
             return UnionCarrierSummon_2(); 
         }
         private bool LinkCheck(bool exZone_1)
@@ -1751,20 +1683,19 @@ namespace WindBot.Game.AI.Decks
             }
             return true;
         }
+        private bool CanEquipDragonBuster(ClientCard card)
+        {
+             // Check original data
+            return card.IsFaceup() && card.Data != null
+                && (((CardAttribute)card.Data.Attribute & CardAttribute.Dark) != 0
+                    || ((CardRace)card.Data.Race & CardRace.Dragon) != 0);
+        }
         private bool UnionCarrierSummon_2()
         {
-            if (Bot.GetMonsterCount() <= 2 && (Bot.HasInMonstersZone(CardId.ThunderDragonColossus) || Bot.HasInMonstersZone(CardId.ThunderDragonTitan))) return false;
-            List<ClientCard> attDarkCards = Bot.GetMonsters().Where(card => card != null && card.HasAttribute(CardAttribute.Dark) && card.IsFaceup() && !card.IsOriginalCode(CardId.ThunderDragonColossus) && GetLinkMark(card.Id) < 3).ToList();
-            List<ClientCard> attLightCards = Bot.GetMonsters().Where(card => card != null && card.HasAttribute(CardAttribute.Light) && card.IsFaceup() && GetLinkMark(card.Id) < 3).ToList();
-            List<ClientCard> attEarthCards = Bot.GetMonsters().Where(card => card != null && card.HasAttribute(CardAttribute.Earth) && card.IsFaceup() && GetLinkMark(card.Id) < 3).ToList();
-            List<ClientCard> raceThunderCards = Bot.GetMonsters().Where(card => card != null && card.HasRace(CardRace.Thunder) && card.IsFaceup() && !card.IsOriginalCode(CardId.ThunderDragonColossus) && GetLinkMark(card.Id) < 3).ToList();
-            List<ClientCard> raceDragonCards = Bot.GetMonsters().Where(card => card != null && card.HasRace(CardRace.Dragon) && card.IsFaceup() && GetLinkMark(card.Id) < 3).ToList();
-            List<ClientCard> raceBeastCards = Bot.GetMonsters().Where(card => card != null && card.HasRace(CardRace.Beast) && card.IsFaceup() && GetLinkMark(card.Id) < 3).ToList();
-            if (attDarkCards.Count() < 2 && attLightCards.Count() < 2 && attEarthCards.Count() < 2
-                && raceThunderCards.Count() < 2 && raceDragonCards.Count() < 2 && raceBeastCards.Count() < 2)
-                return false;
+            if (!Bot.HasInHand(CardId.DragonBusterDestructionSword) && !Bot.HasInDeck(CardId.DragonBusterDestructionSword)) return false;
             if (!LinkCheck(false) || !LinkCheck(true)) return false;
             if (!IsAvailableLinkZone()) return false;
+            if (Bot.MonsterZone[5] != null && Bot.MonsterZone[5].Controller == 0 && GetLinkMark(Bot.MonsterZone[5].Id) > 1) return false;
             if (Bot.MonsterZone[6] != null && Bot.MonsterZone[6].Controller == 0 && GetLinkMark(Bot.MonsterZone[6].Id) > 1) return false;
             int[] materials = new[] {
                 CardId.StrikerDragon,CardId.BatterymanToken,CardId.BatterymanSolar,
@@ -1775,11 +1706,31 @@ namespace WindBot.Game.AI.Decks
                 CardId.TheChaosCreator,CardId.Linkuriboh,CardId.TheBystialLubellion,
                 CardId.ThunderDragonlord,CardId.PredaplantVerteAnaconda,CardId.IP
             };
-            if (Bot.MonsterZone.GetMatchingCardsCount(card => card.IsCode(materials)) >= 2)
+            List<ClientCard> materialCandidates = new List<ClientCard>();
+            foreach (int materialId in materials)
             {
-                AI.SelectMaterials(materials);
-                summon_UnionCarrier = true;
-                return true;
+                foreach (ClientCard monster in Bot.GetMonsters())
+                {
+                    if (monster.IsFaceup() && monster.IsCode(materialId))
+                        materialCandidates.Add(monster);
+                }
+            }
+            for (int i = 0; i < materialCandidates.Count; ++i)
+            {
+                ClientCard first = materialCandidates[i];
+                for (int j = i + 1; j < materialCandidates.Count; ++j)
+                {
+                    ClientCard second = materialCandidates[j];
+                    bool sameAttribute = (first.Attribute & second.Attribute) != 0;
+                    bool sameRace = (first.Race & second.Race) != 0;
+                    if (!sameAttribute && !sameRace) continue;
+                    if (!Bot.GetMonsters().Any(monster => monster != first && monster != second
+                        && CanEquipDragonBuster(monster))) continue;
+
+                    AI.SelectMaterials(new List<ClientCard> { first, second });
+                    summon_UnionCarrier = true;
+                    return true;
+                }
             }
             return false;
         }
@@ -1979,7 +1930,7 @@ namespace WindBot.Game.AI.Decks
                     mcards.AddRange(grave);
                     mcards.AddRange(banish);
                     int mcount =  mcards.Count(card => card != null && card.HasType(CardType.Monster) && card.HasSetcode(0x11c) && !card.IsCode(CardId.ThunderDragonColossus) && !card.IsCode(CardId.ThunderDragonTitan));
-                    isShoudlSummon_1 =  mcount > 0 ? true : false;
+                    isShoudlSummon_1 = mcount > 0;
                 } 
                 else if(Bot.HasInHand(CardId.TheChaosCreator) && light_count > 0 && dark_count > 0) isShoudlSummon_1 = true;
                 else if (Bot.HasInHand(CardId.ThunderDragonlord) && Bot.Hand.Count(card=>card != null && card.HasType(CardType.Monster) && card.HasSetcode(0x11c))>1) isShoudlSummon_1 = true;
@@ -2113,9 +2064,7 @@ namespace WindBot.Game.AI.Decks
                 AI.SelectCard(CardId.ThunderDragondark);
             else 
             {
-                List<int> cardsid = new List<int>();
-                cardsid.Add(CardId.BlackDragonCollapserpent);
-                cardsid.Add(CardId.TheChaosCreator);
+                List<int> cardsid = new List<int>() { CardId.BlackDragonCollapserpent, CardId.TheChaosCreator };
                 foreach (var card in Bot.Graveyard)
                 {
                     if (card != null && !card.HasSetcode(0x11c) && card.HasAttribute(CardAttribute.Dark))
@@ -2136,7 +2085,7 @@ namespace WindBot.Game.AI.Decks
         {
             switch (location)
             {
-                case CardLocation.Deck: if (CheckRemainInDeck(cardId) <= 0) return false;  break;
+                case CardLocation.Deck: if (!Bot.HasInDeck(cardId)) return false;  break;
                 case CardLocation.Hand: if (!Bot.HasInHand(cardId)) return false;  break;
                 case CardLocation.Grave: if (!Bot.HasInGraveyard(cardId)) return false;  break;
                 case CardLocation.Removed: if (!Bot.HasInBanished(cardId)) return false; break;
@@ -2181,7 +2130,7 @@ namespace WindBot.Game.AI.Decks
                     AI.SelectCard(CardId.ThunderDragonmatrix);
                     _ThunderDragonmatrix = true;
                 }
-                else if (Bot.GetCountCardInZone(Bot.Hand, CardId.NormalThunderDragon) > 1)
+                else if (Bot.Hand.GetCardCount(CardId.NormalThunderDragon) > 1)
                     AI.SelectCard(CardId.NormalThunderDragon);
                 else
                 {
@@ -2198,7 +2147,7 @@ namespace WindBot.Game.AI.Decks
                 else if (HasInZoneNoActivate(CardId.ThunderDragonmatrix, CardLocation.Deck) && !_ThunderDragonmatrix
                       && !Bot.HasInMonstersZone(CardId.ThunderDragonmatrix, false, false, true))
                     AI.SelectNextCard(CardId.ThunderDragonmatrix);
-                else if(Bot.HasInGraveyard(CardId.TheChaosCreator) && !activate_ChaosSpace_grave && CheckRemainInDeck(CardId.ThunderDragonlord) > 0)
+                else if(Bot.HasInGraveyard(CardId.TheChaosCreator) && !activate_ChaosSpace_grave && Bot.HasInDeck(CardId.ThunderDragonlord))
                     AI.SelectNextCard(CardId.ThunderDragonlord);
                 else
                     AI.SelectNextCard(CardId.NormalThunderDragon);
@@ -2270,21 +2219,21 @@ namespace WindBot.Game.AI.Decks
             {
                 if (Bot.Graveyard.Count(card => card != null && card.HasAttribute(CardAttribute.Dark)) > 0
                     && Bot.Graveyard.Count(card => card != null && card.HasAttribute(CardAttribute.Light)) > 0
-                    && CheckRemainInDeck(CardId.TheChaosCreator) > 0)
+                    && Bot.HasInDeck(CardId.TheChaosCreator))
                     AI.SelectCard(CardId.TheChaosCreator);
                 else if(Bot.HasInGraveyardOrInBanished(CardId.ThunderDragonroar) || Bot.HasInGraveyardOrInBanished(CardId.ThunderDragondark)
                          || Bot.HasInGraveyardOrInBanished(CardId.ThunderDragonlord) || Bot.HasInGraveyardOrInBanished(CardId.ThunderDragonmatrix)
-                         || Bot.HasInGraveyardOrInBanished(CardId.NormalThunderDragon) && CheckRemainInDeck(CardId.ThunderDragonhawk) > 0)
+                         || Bot.HasInGraveyardOrInBanished(CardId.NormalThunderDragon) && Bot.HasInDeck(CardId.ThunderDragonhawk))
                          AI.SelectCard(CardId.ThunderDragonhawk);
                 else if((HasInZoneNoActivate(CardId.BystialDruiswurm,CardLocation.Hand) || HasInZoneNoActivate(CardId.BystialMagnamhut, CardLocation.Hand)
                         || HasInZoneNoActivate(CardId.WhiteDragonWyverburster, CardLocation.Hand) || HasInZoneNoActivate(CardId.BlackDragonCollapserpent, CardLocation.Hand)
-                        || HasInZoneNoActivate(CardId.TheChaosCreator, CardLocation.Hand)) && CheckRemainInDeck(CardId.BatterymanSolar) > 0)
+                        || HasInZoneNoActivate(CardId.TheChaosCreator, CardLocation.Hand)) && Bot.HasInDeck(CardId.BatterymanSolar))
                         AI.SelectCard(CardId.BatterymanSolar);
-                else if(Bot.HasInMonstersZone(CardId.ThunderDragonTitan,true,false,true) && CheckRemainInDeck(CardId.NormalThunderDragon)>1)
+                else if(Bot.HasInMonstersZone(CardId.ThunderDragonTitan,true,false,true) && Bot.GetCardCountInDeck(CardId.NormalThunderDragon)>1)
                         AI.SelectCard(CardId.NormalThunderDragon);
                 else if(!HasInZoneNoActivate(CardId.ThunderDragonroar,CardLocation.Deck))
                         AI.SelectCard(CardId.ThunderDragonroar);
-                else if(handActivated && CheckRemainInDeck(CardId.ThunderDragonlord) > 0)
+                else if(handActivated && Bot.HasInDeck(CardId.ThunderDragonlord))
                         AI.SelectCard(CardId.ThunderDragonlord);
                 else
                     AI.SelectCard(CardId.TheChaosCreator,CardId.ThunderDragondark,CardId.ThunderDragonlord);
@@ -2296,8 +2245,8 @@ namespace WindBot.Game.AI.Decks
                 List<ClientCard> cards = Bot.Graveyard.ToList();
                 IList<ClientCard> banish = Bot.Banished;
                 cards.AddRange(banish);
-                if (Bot.HasInExtra(CardId.ThunderDragonColossus) && Bot.GetCountCardInZone(cards, CardId.NormalThunderDragon) >= 1 &&
-                   Bot.GetCountCardInZone(cards, CardId.NormalThunderDragon) + cards.Count(card => card != null && card.HasSetcode(0x11c) && card.HasType(CardType.Monster) && !card.IsCode(CardId.NormalThunderDragon)) > 1)
+                if (Bot.HasInExtra(CardId.ThunderDragonColossus) && cards.GetCardCount(CardId.NormalThunderDragon) >= 1 &&
+                   cards.GetCardCount(CardId.NormalThunderDragon) + cards.Count(card => card != null && card.HasSetcode(0x11c) && card.HasType(CardType.Monster) && !card.IsCode(CardId.NormalThunderDragon)) > 1)
                 {
                     AI.SelectCard(CardId.ThunderDragonColossus, CardId.ThunderDragonTitan);
                     return true;
@@ -2333,7 +2282,7 @@ namespace WindBot.Game.AI.Decks
         {
             if (Card.Location == CardLocation.Grave)
             {
-                if((CheckRemainInDeck(CardId.ThunderDragonFusion)>0 || Bot.HasInHandOrInSpellZone(CardId.ThunderDragonFusion))
+                if((Bot.HasInDeck(CardId.ThunderDragonFusion) || Bot.HasInHandOrInSpellZone(CardId.ThunderDragonFusion))
                    && !Bot.HasInExtra(CardId.ThunderDragonTitan))
                     AI.SelectCard(CardId.ThunderDragonTitan,CardId.ThunderDragonColossus, CardId.BlackDragonCollapserpent, CardId.WhiteDragonWyverburster, CardId.TheBystialLubellion);
                 else 
@@ -2347,7 +2296,7 @@ namespace WindBot.Game.AI.Decks
         {
             if (Card.Location != CardLocation.Grave)
             {
-                if (Bot.GetCountCardInZone(Bot.Hand, CardId.ThunderDragonmatrix) > 1 && !activate_ThunderDragonmatrix
+                if (Bot.Hand.GetCardCount(CardId.ThunderDragonmatrix) > 1 && !activate_ThunderDragonmatrix
                     && !CheckHandThunder() && Bot.Hand.Any(card => card != null &&
                     (card.HasAttribute(CardAttribute.Dark) || card.HasAttribute(CardAttribute.Light))
                     && !card.IsCode(CardId.ThunderDragonroar) && !card.IsCode(CardId.ThunderDragondark) && !card.IsCode(CardId.ThunderDragonhawk)
@@ -2440,7 +2389,7 @@ namespace WindBot.Game.AI.Decks
                         return true;
                     }
                     if (Duel.CurrentChain.Count > 0 || Duel.Phase < DuelPhase.Main1) return false;
-                    if (handActivated || (Bot.HasInHand(CardId.NormalThunderDragon) && CheckRemainInDeck(CardId.NormalThunderDragon) > 0) || !Bot.HasInExtra(CardId.ThunderDragonColossus)) return false;
+                    if (handActivated || (Bot.HasInHand(CardId.NormalThunderDragon) && Bot.HasInDeck(CardId.NormalThunderDragon)) || !Bot.HasInExtra(CardId.ThunderDragonColossus)) return false;
                     if (!isSummoned && (Bot.HasInHand(CardId.BatterymanSolar) || Bot.HasInHand(CardId.AloofLupine))) return false;
                     activate_ThunderDragondark = true;
                     handActivated = true;
@@ -2469,25 +2418,25 @@ namespace WindBot.Game.AI.Decks
             {
                 if (Duel.Player == 0)
                 {
-                    if (handActivated && CheckRemainInDeck(CardId.ThunderDragonlord) > 0 &&
+                    if (handActivated && Bot.HasInDeck(CardId.ThunderDragonlord) &&
                         Bot.Hand.Count(card => card != null && card.HasRace(CardRace.Thunder)) > 0 &&
                         (Bot.HasInMonstersZone(CardId.ThunderDragonColossus) || (!isSummoned && Bot.Hand.Count(card => card != null && card.HasRace(CardRace.Thunder)) > 1)))
                         AI.SelectCard(CardId.ThunderDragonlord);
                     else if (HasInZoneNoActivate(CardId.ThunderDragonhawk, CardLocation.Deck) && !Bot.HasInHand(CardId.ThunderDragonhawk))
                         AI.SelectCard(CardId.ThunderDragonhawk);
                     else if (handActivated && Bot.Hand.Count(card => card != null && card.HasRace(CardRace.Thunder) && card.Level < 8) > 0
-                        && Bot.HasInMonstersZone(CardId.ThunderDragonColossus) && CheckRemainInDeck(CardId.ThunderDragonlord) > 0)
+                        && Bot.HasInMonstersZone(CardId.ThunderDragonColossus) && Bot.HasInDeck(CardId.ThunderDragonlord))
                         AI.SelectCard(CardId.ThunderDragonlord);
                     else if (HasInZoneNoActivate(CardId.ThunderDragonmatrix, CardLocation.Deck))
                         AI.SelectCard(CardId.ThunderDragonmatrix);
                     else if (HasInZoneNoActivate(CardId.ThunderDragonroar, CardLocation.Hand) && handActivated
-                            && CheckRemainInDeck(CardId.ThunderDragonlord) > 0)
+                            && Bot.HasInDeck(CardId.ThunderDragonlord))
                         AI.SelectCard(CardId.ThunderDragonlord);
-                    else if (CheckRemainInDeck(CardId.ThunderDragonlord) > 0 && CheckRemainInDeck(CardId.NormalThunderDragon) > 1)
+                    else if (Bot.HasInDeck(CardId.ThunderDragonlord) && Bot.GetCardCountInDeck(CardId.NormalThunderDragon) > 1)
                         AI.SelectCard(CardId.ThunderDragonlord);
-                    else if (handActivated && Bot.HasInHand(CardId.ThunderDragonlord) && CheckRemainInDeck(CardId.ThunderDragonroar) > 0)
+                    else if (handActivated && Bot.HasInHand(CardId.ThunderDragonlord) && Bot.HasInDeck(CardId.ThunderDragonroar))
                         AI.SelectCard(CardId.ThunderDragonroar);
-                    else if (CheckRemainInDeck(CardId.NormalThunderDragon) > 1 && !handActivated)
+                    else if (Bot.GetCardCountInDeck(CardId.NormalThunderDragon) > 1 && !handActivated)
                         AI.SelectCard(CardId.NormalThunderDragon);
                     else
                         AI.SelectCard(CardId.ThunderDragonmatrix, CardId.ThunderDragondark, CardId.ThunderDragonroar, CardId.NormalThunderDragon);
@@ -2527,9 +2476,9 @@ namespace WindBot.Game.AI.Decks
                     AI.SelectCard(CardId.ThunderDragondark);
                 else if ((HasInZoneNoActivate(CardId.ThunderDragonmatrix, CardLocation.Deck)))
                     AI.SelectCard(CardId.ThunderDragonmatrix);
-                else if (CheckRemainInDeck(CardId.NormalThunderDragon) > 0)
+                else if (Bot.HasInDeck(CardId.NormalThunderDragon))
                     AI.SelectCard(CardId.NormalThunderDragon);
-                else if (CheckRemainInDeck(CardId.TheChaosCreator) > 0)
+                else if (Bot.HasInDeck(CardId.TheChaosCreator))
                     AI.SelectCard(CardId.TheChaosCreator);
                 else AI.SelectCard(CardId.ThunderDragonmatrix);
             }
@@ -2539,7 +2488,7 @@ namespace WindBot.Game.AI.Decks
                     AI.SelectCard(CardId.ThunderDragonroar);
                 else if (HasInZoneNoActivate(CardId.ThunderDragondark, CardLocation.Deck))
                     AI.SelectCard(CardId.ThunderDragondark);
-                else if (CheckRemainInDeck(CardId.TheChaosCreator) > 0)
+                else if (Bot.HasInDeck(CardId.TheChaosCreator))
                     AI.SelectCard(CardId.TheChaosCreator);
                 else AI.SelectCard(CardId.ThunderDragonmatrix);
 

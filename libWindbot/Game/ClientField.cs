@@ -1,12 +1,17 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using WindBot.Game.AI;
+using YGOSharp.OCGWrapper;
 using YGOSharp.OCGWrapper.Enums;
 
 namespace WindBot.Game
 {
     public class ClientField
     {
+        private IDictionary<int, int> _deckCardCounts;
+        public bool DeckTrackingActive;
+
         public IList<ClientCard> Hand { get; private set; }
         public ClientCard[] MonsterZone { get; private set; }
         public ClientCard[] SpellZone { get; private set; }
@@ -25,7 +30,7 @@ namespace WindBot.Game
         {
         }
 
-        public void Init(int deck, int extra)
+        public void Init(int deck, int extra, int player)
         {
             Hand = new List<ClientCard>();
             MonsterZone = new ClientCard[7];
@@ -37,9 +42,125 @@ namespace WindBot.Game
             HintDescriptions = new HashSet<int>();
 
             for (int i = 0; i < deck; ++i)
-                Deck.Add(new ClientCard(0, CardLocation.Deck, -1));
+            {
+                ClientCard card = new ClientCard(0, CardLocation.Deck, i, (int)CardPosition.FaceDownDefence);
+                card.Owner = player;
+                card.Controller = player;
+                Deck.Add(card);
+            }
             for (int i = 0; i < extra; ++i)
-                ExtraDeck.Add(new ClientCard(0, CardLocation.Extra, -1));
+            {
+                ClientCard card = new ClientCard(0, CardLocation.Extra, i, (int)CardPosition.FaceDownDefence);
+                card.Owner = player;
+                card.Controller = player;
+                ExtraDeck.Add(card);
+            }
+        }
+
+        public void SetInitialDeck(IEnumerable<NamedCard> cards)
+        {
+            _deckCardCounts = new Dictionary<int, int>();
+            DeckTrackingActive = true;
+            foreach (NamedCard card in cards)
+                IncrementDeckCardCount(card.Id);
+        }
+
+        private void IncrementDeckCardCount(int cardId)
+        {
+            int count;
+            _deckCardCounts.TryGetValue(cardId, out count);
+            _deckCardCounts[cardId] = count + 1;
+        }
+
+        private int GetTrackedDeckCount(int cardId)
+        {
+            int remaining = 0;
+            bool found = false;
+            foreach (KeyValuePair<int, int> pair in _deckCardCounts)
+            {
+                NamedCard card = NamedCard.Get(pair.Key);
+                if (pair.Key != cardId && (card == null || card.Alias != cardId || !NamedCard.IsAltartAlias(card.Id, card.Alias)))
+                    continue;
+                found = true;
+                remaining += pair.Value;
+            }
+            if (!found)
+            {
+                // at most cases we don't want to log this
+                // Logger.DebugWriteLine($"GetTrackedDeckCount: cardId {cardId} not found in the deck being used.");
+            }
+            return remaining;
+        }
+
+        internal void TrackAddToDeck(int cardId)
+        {
+            if (!DeckTrackingActive || _deckCardCounts == null)
+                return;
+
+            if (cardId == 0)
+            {
+                Logger.WriteErrorLine("Deck tracking: an unknown card entered the deck.");
+                return;
+            }
+            IncrementDeckCardCount(cardId);
+        }
+
+        internal void TrackRemoveFromDeck(int cardId)
+        {
+            if (!DeckTrackingActive || _deckCardCounts == null)
+                return;
+
+            int count = 0;
+            if (cardId != 0 && _deckCardCounts.TryGetValue(cardId, out count) && count > 0)
+            {
+                _deckCardCounts[cardId] = count - 1;
+                return;
+            }
+
+            // No currently OCG card moves a card directly from one player's Deck to another zone hidden to that player,
+            // so an unknown or untracked departure indicates a protocol parsing or state-sync error.
+            Logger.WriteErrorLine("Deck tracking: an unknown or untracked card left the deck.");
+        }
+
+        internal void TrackReplaceDeck(IEnumerable<ClientCard> cards)
+        {
+            if (!DeckTrackingActive || _deckCardCounts == null)
+                return;
+
+            _deckCardCounts.Clear();
+            foreach (ClientCard card in cards)
+            {
+                if (card == null || card.Id == 0)
+                {
+                    Logger.WriteErrorLine("Deck tracking: an unknown card was found while replacing the deck.");
+                    continue;
+                }
+                IncrementDeckCardCount(card.Id);
+            }
+        }
+
+        internal void ValidateTrackedDeckCount(int actualCount)
+        {
+            if (!DeckTrackingActive || _deckCardCounts == null)
+                return;
+
+            int trackedCount = _deckCardCounts.Values.Sum();
+            if (trackedCount == actualCount)
+                return;
+
+            Logger.WriteErrorLine("Deck tracking count mismatch: tracked=" + trackedCount + ", actual=" + actualCount + ".");
+        }
+
+        private bool CanQueryDeck()
+        {
+            if (_deckCardCounts != null && DeckTrackingActive) return true;
+            if (_deckCardCounts != null)
+            {
+                Logger.DebugWriteLine("Deck contents cannot be queried while this bot's deck is inactive in a tag duel.");
+                return false;
+            }
+            Logger.WriteErrorLine("Deck contents cannot be queried because the opponent's deck is hidden to AI.");
+            return false;
         }
 
         public int GetMonstersExtraZoneCount()
@@ -166,6 +287,18 @@ namespace WindBot.Game
             return SpellZone[5];
         }
 
+        public bool HasInDeck(int cardId)
+        {
+            if (!CanQueryDeck()) return false;
+            return GetTrackedDeckCount(cardId) > 0;
+        }
+
+        public bool HasInDeck(params int[] cardIds)
+        {
+            if (!CanQueryDeck()) return false;
+            return cardIds.Any(id => GetTrackedDeckCount(id) > 0);
+        }
+
         public bool HasInHand(int cardId)
         {
             return HasInCards(Hand, cardId);
@@ -206,9 +339,9 @@ namespace WindBot.Game
             return HasInCards(ExtraDeck, cardId);
         }
 
-        public bool HasAttackingMonster()
+        public bool HasAttackingMonster(bool strict = false)
         {
-            return GetMonsters().Any(card => card.IsAttack());
+            return GetMonsters().Any(card => card.IsAttack() || (!strict && card.IsMonsterAttackWhileInDefPos()));
         }
 
         public bool HasDefendingMonster()
@@ -311,30 +444,31 @@ namespace WindBot.Game
             return HasInHand(cardId) || HasInSpellZone(cardId) || HasInGraveyard(cardId);
         }
 
-        public int GetRemainingCount(int cardId, int initialCount)
+        /// <summary>
+        /// Deprecated. Will be removed in the future.
+        /// </summary>
+        /// <param name="initialCount">The param is ignored now.</param>
+        [Obsolete("Use GetCardCountInDeck instead.")]
+        public int GetRemainingCount(int cardId, int initialCount = 0)
         {
-            int remaining = initialCount;
-            remaining = remaining - Hand.Count(card => card != null && card.IsOriginalCode(cardId));
-            remaining = remaining - SpellZone.Count(card => card != null && card.IsOriginalCode(cardId));
-            remaining = remaining - MonsterZone.Count(card => card != null && card.IsOriginalCode(cardId));
-            remaining = remaining - Graveyard.Count(card => card != null && card.IsOriginalCode(cardId));
-            remaining = remaining - Banished.Count(card => card != null && card.IsOriginalCode(cardId));
-            return (remaining < 0) ? 0 : remaining;
+            return GetCardCountInDeck(cardId);
+        }
+
+        public int GetCardCountInDeck(int cardId)
+        {
+            if (!CanQueryDeck()) return 0;
+            return GetTrackedDeckCount(cardId);
+        }
+
+        public int GetCardCountInDeck(IList<int> cardIds)
+        {
+            if (!CanQueryDeck()) return 0;
+            return cardIds.Sum(id => GetTrackedDeckCount(id));
         }
 
         private static int GetCount(IEnumerable<ClientCard> cards)
         {
             return cards.Count(card => card != null);
-        }
-
-        public int GetCountCardInZone(IEnumerable<ClientCard> cards, int cardId)
-        {
-            return cards.Count(card => card != null && card.IsCode(cardId));
-        }
-
-        public int GetCountCardInZone(IEnumerable<ClientCard> cards, List<int> cardId)
-        {
-            return cards.Count(card => card != null && card.IsCode(cardId));
         }
 
         private static List<ClientCard> GetCards(IEnumerable<ClientCard> cards, CardType type)

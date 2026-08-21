@@ -1087,9 +1087,7 @@ namespace WindBot.Game.AI.Decks
                 List<ClientCard> eres = cards.Where(card => card != null && card.Controller == 1 && !key_no_remove_ids.Contains(card.Id)).ToList();
                 eres.Sort(CardContainer.CompareCardAttack);
                 eres.Reverse();
-                int emax = eres.Count > max ? max : eres.Count <= 0 ? min : eres.Count;
-                int mmax = res.Count > max ? max : res.Count <= 0 ? min : res.Count;
-                return eres.Count > 0 ? Util.CheckSelectCount(eres, cards, emax, emax) : res.Count > 0 ? Util.CheckSelectCount(res, cards, mmax, mmax) : null;
+                return eres.Count > 0 ? Util.CheckSelectCount(eres, cards, min, max) : res.Count > 0 ? Util.CheckSelectCount(res, cards, min, max) : null;
             }
             if (hint == HintMsg.AddToHand && cards.Any(card => card != null && card.Location == CardLocation.Deck))
             {
@@ -1119,9 +1117,9 @@ namespace WindBot.Game.AI.Decks
                 List<ClientCard> hkeycards = new List<ClientCard>();
                 mkeycards = cards.Where(card => card != null && card.Id == CardId.TearlamentsKitkallos).ToList();
                 if (!activate_TearlamentsKitkallos_3 && mkeycards.Count > 0 && !AllActivated() && IsShouldSummonFusion(SETCODE, (int)CardRace.Aqua)
-                    && ((CheckRemainInDeck(CardId.TearlamentsHavnis) > 0 && !activate_TearlamentsHavnis_2)
-                    || (CheckRemainInDeck(CardId.TearlamentsMerrli) > 0 && !activate_TearlamentsMerrli_2)
-                    || (CheckRemainInDeck(CardId.TearlamentsScheiren) > 0 && !activate_TearlamentsScheiren_2)))
+                    && ((Bot.HasInDeck(CardId.TearlamentsHavnis) && !activate_TearlamentsHavnis_2)
+                    || (Bot.HasInDeck(CardId.TearlamentsMerrli) && !activate_TearlamentsMerrli_2)
+                    || (Bot.HasInDeck(CardId.TearlamentsScheiren) && !activate_TearlamentsScheiren_2)))
                     return Util.CheckSelectCount(mkeycards, cards, min, max);
                 if (IsShouldSummonFusion())
                 {
@@ -1185,7 +1183,7 @@ namespace WindBot.Game.AI.Decks
                 if (Bot.Deck.Count > 0) ids.Add(CardId.ShaddollBeast);
                 if (Enemy.Graveyard.Count > 0) ids.Add(CardId.NaelshaddollAriel);
                 if (!activate_Eva && Bot.Graveyard.Count(card => card != null && card.HasAttribute(CardAttribute.Light) && card.HasRace(CardRace.Fairy)) > 0
-                   && (CheckRemainInDeck(CardId.HeraldofGreenLight) > 0 || CheckRemainInDeck(CardId.HeraldofOrangeLight) > 0)) ids.Add(CardId.Eva);
+                   && (Bot.HasInDeck(CardId.HeraldofGreenLight) || Bot.HasInDeck(CardId.HeraldofOrangeLight))) ids.Add(CardId.Eva);
                 if (((Bot.HasInHand(CardId.HeraldofOrangeLight) || Bot.HasInHand(CardId.HeraldofGreenLight))
                     && Bot.Hand.Count(card => card != null && card.HasRace(CardRace.Fairy)) > 2)
                     || (!Bot.HasInHand(CardId.HeraldofOrangeLight) && !Bot.HasInHand(CardId.HeraldofGreenLight)))
@@ -1193,7 +1191,7 @@ namespace WindBot.Game.AI.Decks
                     ids.Add(CardId.MudoratheSwordOracle);
                     ids.Add(CardId.KeldotheSacredProtector);
                 }
-                if (!activate_TearlamentsScream_2 && CheckRemainInDeck(CardId.TearlamentsSulliek) > 0) ids.Add(CardId.TearlamentsScream);
+                if (!activate_TearlamentsScream_2 && Bot.HasInDeck(CardId.TearlamentsSulliek)) ids.Add(CardId.TearlamentsScream);
                 if (!activate_TearlamentsSulliek_2) ids.Add(CardId.TearlamentsSulliek);
                 if (!activate_TearlamentsReinoheart_2 && HasInList(cards, CardId.TearlamentsReinoheart)) ids.Add(CardId.TearlamentsReinoheart);
                 if (!cards.Any(card => card != null && !card.HasRace(CardRace.Fairy)))
@@ -1238,7 +1236,7 @@ namespace WindBot.Game.AI.Decks
                     cardsid.Add(CardId.ElderEntityNtss);
                 }
                 if (HasInList(cards, CardId.Eva) && !activate_Eva &&
-                    (CheckRemainInDeck(CardId.HeraldofOrangeLight) > 0 || CheckRemainInDeck(CardId.HeraldofGreenLight) > 0))
+                    (Bot.HasInDeck(CardId.HeraldofOrangeLight) || Bot.HasInDeck(CardId.HeraldofGreenLight)))
                     cardsid.Add(CardId.Eva);
                 if (HasInList(cards, CardId.MudoratheSwordOracle)) cardsid.Add(CardId.MudoratheSwordOracle);
                 if (HasInList(cards, CardId.KeldotheSacredProtector)) cardsid.Add(CardId.KeldotheSacredProtector);
@@ -1249,7 +1247,7 @@ namespace WindBot.Game.AI.Decks
                     if (cards.Any(card => card != null && card.Id == CardId.TearlamentsScheiren) && !activate_TearlamentsScheiren_2) cardsid.Add(CardId.TearlamentsScheiren);
                 }
                 if (cards.Any(card => card != null && card.Id == CardId.TearlamentsSulliek) && !activate_TearlamentsSulliek_2) cardsid.Add(CardId.TearlamentsSulliek);
-                if (cards.Any(card => card != null && card.Id == CardId.TearlamentsScream) && !activate_TearlamentsScream_2 && CheckRemainInDeck(CardId.TearlamentsSulliek) > 0) cardsid.Add(CardId.TearlamentsScream);
+                if (cards.Any(card => card != null && card.Id == CardId.TearlamentsScream) && !activate_TearlamentsScream_2 && Bot.HasInDeck(CardId.TearlamentsSulliek)) cardsid.Add(CardId.TearlamentsScream);
                 IList<ClientCard> res = CardsIdToClientCards(cardsid, cards, false);
                 if (res.Count > 0) no_fusion_card = res[0];
                 return res.Count > 0 ? Util.CheckSelectCount(res, cards, min, max) : null;
@@ -1272,8 +1270,7 @@ namespace WindBot.Game.AI.Decks
                 {
                     return null;
                 }
-                int imax = e_cards.Count > max ? max : e_cards.Count < 0 ? min : e_cards.Count;
-                if (Duel.CurrentChain == null || Duel.ChainTargets == null) return Util.CheckSelectCount(cards, cards, imax, imax);
+                if (Duel.CurrentChain == null || Duel.ChainTargets == null) return Util.CheckSelectCount(cards, cards, min, max);
                 foreach (var card in Duel.CurrentChain)
                 {
                     if (card == null || card.Controller == 0 || card.Location != CardLocation.Grave) continue;
@@ -1328,9 +1325,9 @@ namespace WindBot.Game.AI.Decks
                     IList<ClientCard> temp = new List<ClientCard>();
                     if (b_cards.Count > 0 && Bot.ExtraDeck.Any(card => card != null && card.HasType(CardType.Fusion) && card.Id != CardId.ElderEntityNtss))
                     {
-                        if (CheckRemainInDeck(CardId.TearlamentsScheiren) <= 0 && HasInList(cards, CardId.TearlamentsScheiren)) bot_send_to_deck_ids.Add(CardId.TearlamentsScheiren);
-                        if (CheckRemainInDeck(CardId.TearlamentsMerrli) <= 0 && HasInList(cards, CardId.TearlamentsMerrli)) bot_send_to_deck_ids.Add(CardId.TearlamentsMerrli);
-                        if (CheckRemainInDeck(CardId.TearlamentsHavnis) <= 0 && HasInList(cards, CardId.TearlamentsHavnis)) bot_send_to_deck_ids.Add(CardId.TearlamentsHavnis);
+                        if (!Bot.HasInDeck(CardId.TearlamentsScheiren) && HasInList(cards, CardId.TearlamentsScheiren)) bot_send_to_deck_ids.Add(CardId.TearlamentsScheiren);
+                        if (!Bot.HasInDeck(CardId.TearlamentsMerrli) && HasInList(cards, CardId.TearlamentsMerrli)) bot_send_to_deck_ids.Add(CardId.TearlamentsMerrli);
+                        if (!Bot.HasInDeck(CardId.TearlamentsHavnis) && HasInList(cards, CardId.TearlamentsHavnis)) bot_send_to_deck_ids.Add(CardId.TearlamentsHavnis);
                     }
                     temp = CardsIdToClientCards(bot_send_to_deck_ids, b_cards);
                     if (temp.Count > 0)
@@ -1344,10 +1341,10 @@ namespace WindBot.Game.AI.Decks
                     }
                     bot_send_to_deck_ids.Clear();
                     if (HasInList(cards, CardId.NaelshaddollAriel)) bot_send_to_deck_ids.Add(CardId.NaelshaddollAriel);
-                    if (CheckRemainInDeck(CardId.KelbektheAncientVanguard) <= 0 && HasInList(cards, CardId.KelbektheAncientVanguard)) bot_send_to_deck_ids.Add(CardId.KelbektheAncientVanguard);
-                    if (CheckRemainInDeck(CardId.AgidotheAncientSentinel) <= 0 && HasInList(cards, CardId.AgidotheAncientSentinel)) bot_send_to_deck_ids.Add(CardId.AgidotheAncientSentinel);
-                    if (CheckRemainInDeck(CardId.HeraldofOrangeLight) <= 0 && HasInList(cards, CardId.HeraldofOrangeLight)) bot_send_to_deck_ids.Add(CardId.HeraldofOrangeLight);
-                    if (CheckRemainInDeck(CardId.HeraldofGreenLight) <= 0 && HasInList(cards, CardId.HeraldofGreenLight)) bot_send_to_deck_ids.Add(CardId.HeraldofGreenLight);
+                    if (!Bot.HasInDeck(CardId.KelbektheAncientVanguard) && HasInList(cards, CardId.KelbektheAncientVanguard)) bot_send_to_deck_ids.Add(CardId.KelbektheAncientVanguard);
+                    if (!Bot.HasInDeck(CardId.AgidotheAncientSentinel) && HasInList(cards, CardId.AgidotheAncientSentinel)) bot_send_to_deck_ids.Add(CardId.AgidotheAncientSentinel);
+                    if (!Bot.HasInDeck(CardId.HeraldofOrangeLight) && HasInList(cards, CardId.HeraldofOrangeLight)) bot_send_to_deck_ids.Add(CardId.HeraldofOrangeLight);
+                    if (!Bot.HasInDeck(CardId.HeraldofGreenLight) && HasInList(cards, CardId.HeraldofGreenLight)) bot_send_to_deck_ids.Add(CardId.HeraldofGreenLight);
                     temp = CardsIdToClientCards(bot_send_to_deck_ids, b_cards);
                     if (temp.Count > 0)
                     {
@@ -1369,8 +1366,7 @@ namespace WindBot.Game.AI.Decks
                 e_temp_1.AddRange(e_temp_2);
                 e_temp_1.AddRange(e_temp_4);
                 e_temp_1.AddRange(e_temp_3);
-                imax = e_temp_1.Count > max ? max : e_temp_1.Count < 0 ? min : e_temp_1.Count;
-                return e_temp_1.Count > 0 ? Util.CheckSelectCount(e_temp_1, cards, imax, imax) : Util.CheckSelectCount(e_cards, cards, max, max);
+                return e_temp_1.Count > 0 ? Util.CheckSelectCount(e_temp_1, cards, min, max) : Util.CheckSelectCount(e_cards, cards, min, max);
 
             }
             if (hint == HintMsg.SpSummon && cards.Any(card => card != null && (card.Level == 2 || card.LinkCount == 2) && card.Location == CardLocation.Grave))
@@ -1403,8 +1399,8 @@ namespace WindBot.Game.AI.Decks
                 else
                 {
                     if (HasInList(cards, CardId.DivineroftheHerald) && !activate_DivineroftheHerald && FusionDeckCheck()
-                        && ((CheckRemainInDeck(CardId.AgidotheAncientSentinel) > 0 && !activate_AgidotheAncientSentinel_2)
-                        || (CheckRemainInDeck(CardId.KelbektheAncientVanguard) > 0 && !activate_KelbektheAncientVanguard_2)))
+                        && ((Bot.HasInDeck(CardId.AgidotheAncientSentinel) && !activate_AgidotheAncientSentinel_2)
+                        || (Bot.HasInDeck(CardId.KelbektheAncientVanguard) && !activate_KelbektheAncientVanguard_2)))
                     {
                         ids.Add(CardId.DivineroftheHerald);
                     }
@@ -1463,9 +1459,9 @@ namespace WindBot.Game.AI.Decks
                         }
                         res0 = cards.Where(card => card != null && card.Id == CardId.TearlamentsKitkallos).ToList();
                         if (res0.Count > 0 && ((!activate_TearlamentsKitkallos_1 &&
-                            ((!activate_TearlamentsScheiren_2 && CheckRemainInDeck(CardId.TearlamentsScheiren) > 0)
-                            || (!activate_TearlamentsHavnis_2 && CheckRemainInDeck(CardId.TearlamentsHavnis) > 0)
-                            || (!activate_TearlamentsMerrli_2 && CheckRemainInDeck(CardId.TearlamentsMerrli) > 0))) || !activate_TearlamentsKitkallos_2))
+                            ((!activate_TearlamentsScheiren_2 && Bot.HasInDeck(CardId.TearlamentsScheiren))
+                            || (!activate_TearlamentsHavnis_2 && Bot.HasInDeck(CardId.TearlamentsHavnis))
+                            || (!activate_TearlamentsMerrli_2 && Bot.HasInDeck(CardId.TearlamentsMerrli)))) || !activate_TearlamentsKitkallos_2))
                         {
                             TearlamentsKitkallos_summoned = true;
                             return Util.CheckSelectCount(res0, cards, min, max);
@@ -1515,9 +1511,9 @@ namespace WindBot.Game.AI.Decks
                     {
                         List<ClientCard> res = cards.Where(card => card != null && card.Id == CardId.TearlamentsKitkallos).ToList();
                         if (res.Count > 0 && !activate_TearlamentsKitkallos_1 &&
-                            ((!activate_TearlamentsScheiren_2 && CheckRemainInDeck(CardId.TearlamentsScheiren) > 0)
-                            || (!activate_TearlamentsHavnis_2 && CheckRemainInDeck(CardId.TearlamentsHavnis) > 0)
-                            || (!activate_TearlamentsMerrli_2 && CheckRemainInDeck(CardId.TearlamentsMerrli) > 0)) && Bot.GetMonstersInMainZone().Count < 4)
+                            ((!activate_TearlamentsScheiren_2 && Bot.HasInDeck(CardId.TearlamentsScheiren))
+                            || (!activate_TearlamentsHavnis_2 && Bot.HasInDeck(CardId.TearlamentsHavnis))
+                            || (!activate_TearlamentsMerrli_2 && Bot.HasInDeck(CardId.TearlamentsMerrli))) && Bot.GetMonstersInMainZone().Count < 4)
                         {
                             TearlamentsKitkallos_summoned = true;
                             return Util.CheckSelectCount(res, cards, min, max);
@@ -1568,9 +1564,9 @@ namespace WindBot.Game.AI.Decks
         }
         private bool IsCanFusionSummon()
         {
-            if ((!activate_TearlamentsMerrli_2 && CheckRemainInDeck(CardId.TearlamentsMerrli) > 0)
-                || (!activate_TearlamentsHavnis_2 && CheckRemainInDeck(CardId.TearlamentsHavnis) > 0)
-                || (!activate_TearlamentsScheiren_2 && CheckRemainInDeck(CardId.TearlamentsScheiren) > 0))
+            if ((!activate_TearlamentsMerrli_2 && Bot.HasInDeck(CardId.TearlamentsMerrli))
+                || (!activate_TearlamentsHavnis_2 && Bot.HasInDeck(CardId.TearlamentsHavnis))
+                || (!activate_TearlamentsScheiren_2 && Bot.HasInDeck(CardId.TearlamentsScheiren)))
                 return Bot.ExtraDeck.Count(card => card != null && card.HasType(CardType.Fusion) && card.Id != CardId.ElderEntityNtss) > 0;
             return false;
 
@@ -1622,68 +1618,24 @@ namespace WindBot.Game.AI.Decks
         }
         private bool FusionDeckCheck()
         {
-            return (CheckRemainInDeck(CardId.TearlamentsHavnis) > 0 && !activate_TearlamentsHavnis_2)
-                    || (CheckRemainInDeck(CardId.TearlamentsMerrli) > 0 && !activate_TearlamentsMerrli_2)
-                    || (CheckRemainInDeck(CardId.TearlamentsScheiren) > 0 && !activate_TearlamentsScheiren_2);
+            return (Bot.HasInDeck(CardId.TearlamentsHavnis) && !activate_TearlamentsHavnis_2)
+                    || (Bot.HasInDeck(CardId.TearlamentsMerrli) && !activate_TearlamentsMerrli_2)
+                    || (Bot.HasInDeck(CardId.TearlamentsScheiren) && !activate_TearlamentsScheiren_2);
         }
         private List<int> GetCardsIdSendToHand()
         {
             List<int> ids = new List<int>();
-            if (!activate_TearlamentsScheiren_1 && !Bot.HasInHand(CardId.TearlamentsScheiren) && CheckRemainInDeck(CardId.TearlamentsScheiren) > 0 && Bot.Hand.Count(card => card != null && card.HasType(CardType.Monster)) > 0) ids.Add(CardId.TearlamentsScheiren);
-            if (!activate_TearlamentsMerrli_1 && !Bot.HasInHand(CardId.TearlamentsMerrli) && CheckRemainInDeck(CardId.TearlamentsMerrli) > 0 && (!summoned ||!activate_TearlamentsKitkallos_2) ) ids.Add(CardId.TearlamentsMerrli);
-            if (!activate_TearlamentsReinoheart_1 && !Bot.HasInHand(CardId.TearlamentsReinoheart) && CheckRemainInDeck(CardId.TearlamentsReinoheart) > 0) ids.Add(CardId.TearlamentsReinoheart);
-            if (!activate_TearlamentsScheiren_1 && !Bot.HasInHand(CardId.TearlamentsScheiren) && CheckRemainInDeck(CardId.TearlamentsScheiren) > 0) ids.Add(CardId.TearlamentsScheiren);
-            if (!activate_TearlamentsHavnis_1 && !Bot.HasInHand(CardId.TearlamentsHavnis) && CheckRemainInDeck(CardId.TearlamentsHavnis) > 0)
+            if (!activate_TearlamentsScheiren_1 && !Bot.HasInHand(CardId.TearlamentsScheiren) && Bot.HasInDeck(CardId.TearlamentsScheiren) && Bot.Hand.Count(card => card != null && card.HasType(CardType.Monster)) > 0) ids.Add(CardId.TearlamentsScheiren);
+            if (!activate_TearlamentsMerrli_1 && !Bot.HasInHand(CardId.TearlamentsMerrli) && Bot.HasInDeck(CardId.TearlamentsMerrli) && (!summoned ||!activate_TearlamentsKitkallos_2) ) ids.Add(CardId.TearlamentsMerrli);
+            if (!activate_TearlamentsReinoheart_1 && !Bot.HasInHand(CardId.TearlamentsReinoheart) && Bot.HasInDeck(CardId.TearlamentsReinoheart)) ids.Add(CardId.TearlamentsReinoheart);
+            if (!activate_TearlamentsScheiren_1 && !Bot.HasInHand(CardId.TearlamentsScheiren) && Bot.HasInDeck(CardId.TearlamentsScheiren)) ids.Add(CardId.TearlamentsScheiren);
+            if (!activate_TearlamentsHavnis_1 && !Bot.HasInHand(CardId.TearlamentsHavnis) && Bot.HasInDeck(CardId.TearlamentsHavnis))
             {
                 if (Duel.Player == 0 && (Duel.Phase != DuelPhase.End || AllActivated())) ids.Add(CardId.TearlamentsHavnis);
                 else ids.Insert(0, CardId.TearlamentsHavnis);
             }
             ids.AddRange(new List<int>() { CardId.TearlamentsScheiren, CardId.TearlamentsMerrli, CardId.TearlamentsHavnis, CardId.TearlamentsReinoheart });
             return ids;
-        }
-        public int CheckRemainInDeck(int id)
-        {
-            switch (id)
-            {
-                case CardId.ShaddollBeast:
-                    return Bot.GetRemainingCount(CardId.ShaddollBeast, 1);
-                case CardId.ShaddollDragon:
-                    return Bot.GetRemainingCount(CardId.ShaddollDragon, 1);
-                case CardId.TearlamentsScheiren:
-                    return Bot.GetRemainingCount(CardId.TearlamentsScheiren, 3);
-                case CardId.TearlamentsReinoheart:
-                    return Bot.GetRemainingCount(CardId.TearlamentsReinoheart, 2);
-                case CardId.KelbektheAncientVanguard:
-                    return Bot.GetRemainingCount(CardId.KelbektheAncientVanguard, 3);
-                case CardId.MudoratheSwordOracle:
-                    return Bot.GetRemainingCount(CardId.MudoratheSwordOracle, 3);
-                case CardId.AgidotheAncientSentinel:
-                    return Bot.GetRemainingCount(CardId.AgidotheAncientSentinel, 3);
-                case CardId.KeldotheSacredProtector:
-                    return Bot.GetRemainingCount(CardId.KeldotheSacredProtector, 2);
-                case CardId.NaelshaddollAriel:
-                    return Bot.GetRemainingCount(CardId.NaelshaddollAriel, 1);
-                case CardId.TearlamentsHavnis:
-                    return Bot.GetRemainingCount(CardId.TearlamentsHavnis, 3);
-                case CardId.TearlamentsMerrli:
-                    return Bot.GetRemainingCount(CardId.TearlamentsMerrli, 3);
-                case CardId.DivineroftheHerald:
-                    return Bot.GetRemainingCount(CardId.DivineroftheHerald, 3);
-                case CardId.HeraldofOrangeLight:
-                    return Bot.GetRemainingCount(CardId.HeraldofOrangeLight, 3);
-                case CardId.HeraldofGreenLight:
-                    return Bot.GetRemainingCount(CardId.HeraldofGreenLight, 3);
-                case CardId.Eva:
-                    return Bot.GetRemainingCount(CardId.Eva, 1);
-                case CardId.TearlamentsScream:
-                    return Bot.GetRemainingCount(CardId.TearlamentsScream, 1);
-                case CardId.PrimevalPlanetPerlereino:
-                    return Bot.GetRemainingCount(CardId.PrimevalPlanetPerlereino, 2);
-                case CardId.TearlamentsSulliek:
-                    return Bot.GetRemainingCount(CardId.TearlamentsSulliek, 2);
-                default:
-                    return 0;
-            }
         }
         private bool PredaplantDragostapeliaEffect()
         {
@@ -2162,8 +2114,8 @@ namespace WindBot.Game.AI.Decks
         }
         private bool DivineroftheHeraldSummon()
         {
-            if ((CheckRemainInDeck(CardId.KelbektheAncientVanguard) > 0 && !activate_KelbektheAncientVanguard_2)
-                || (CheckRemainInDeck(CardId.AgidotheAncientSentinel) > 0 && !activate_AgidotheAncientSentinel_2))
+            if ((Bot.HasInDeck(CardId.KelbektheAncientVanguard) && !activate_KelbektheAncientVanguard_2)
+                || (Bot.HasInDeck(CardId.AgidotheAncientSentinel) && !activate_AgidotheAncientSentinel_2))
             { 
                 summoned = true;
                 return true;
@@ -2184,11 +2136,11 @@ namespace WindBot.Game.AI.Decks
             {
                 if (Duel.Player == 0)
                 {
-                    if (!IsCanSpSummon() && CheckRemainInDeck(CardId.MudoratheSwordOracle) <= 0 && CheckRemainInDeck(CardId.KeldotheSacredProtector) <= 0) return false;
+                    if (!IsCanSpSummon() && !Bot.HasInDeck(CardId.MudoratheSwordOracle) && !Bot.HasInDeck(CardId.KeldotheSacredProtector)) return false;
                     if ((AllActivated() || Bot.ExtraDeck.Count(card=>card!=null && card.HasType(CardType.Fusion) && card.Id!=CardId.ElderEntityNtss)<=0)
-                        && CheckRemainInDeck(CardId.MudoratheSwordOracle)<=0 && CheckRemainInDeck(CardId.KeldotheSacredProtector)<=0) return false;
-                    if ((activate_KelbektheAncientVanguard_2 || CheckRemainInDeck(CardId.KelbektheAncientVanguard) <= 0)
-                       && (activate_AgidotheAncientSentinel_2 || CheckRemainInDeck(CardId.AgidotheAncientSentinel) <= 0) && Bot.HasInExtra(CardId.SprightElf))
+                        && !Bot.HasInDeck(CardId.MudoratheSwordOracle) && !Bot.HasInDeck(CardId.KeldotheSacredProtector)) return false;
+                    if ((activate_KelbektheAncientVanguard_2 || !Bot.HasInDeck(CardId.KelbektheAncientVanguard))
+                       && (activate_AgidotheAncientSentinel_2 || !Bot.HasInDeck(CardId.AgidotheAncientSentinel)) && Bot.HasInExtra(CardId.SprightElf))
                     {
                         List<ClientCard> cards = Bot.GetMonsters().Where(card => card != null && card.IsFaceup() && !no_link_ids.Contains(card.Id) && card != Card).ToList();
                         if (cards.Count() >= 1) return false;
@@ -2441,9 +2393,9 @@ namespace WindBot.Game.AI.Decks
         }
         private bool AllActivated()
         {
-            return (activate_TearlamentsScheiren_2 || CheckRemainInDeck(CardId.TearlamentsScheiren) <= 0)
-                && (activate_TearlamentsHavnis_2 || CheckRemainInDeck(CardId.TearlamentsHavnis) <= 0)
-                && (activate_TearlamentsMerrli_2 || CheckRemainInDeck(CardId.TearlamentsMerrli) <= 0);
+            return (activate_TearlamentsScheiren_2 || !Bot.HasInDeck(CardId.TearlamentsScheiren))
+                && (activate_TearlamentsHavnis_2 || !Bot.HasInDeck(CardId.TearlamentsHavnis))
+                && (activate_TearlamentsMerrli_2 || !Bot.HasInDeck(CardId.TearlamentsMerrli));
         }
         private bool KelbektheAncientVanguardEffect()
         {
@@ -2554,7 +2506,7 @@ namespace WindBot.Game.AI.Decks
                 else if (!activate_TearlamentsHavnis_2 && Bot.HasInMonstersZone(CardId.TearlamentsHavnis) && IsShouldSummonFusion()) AI.SelectCard(CardId.TearlamentsHavnis);
                 else if (Bot.HasInMonstersZone(CardId.TearlamentsReinoheart) && !activate_TearlamentsReinoheart_1 && !AllActivated()) AI.SelectCard(CardId.TearlamentsReinoheart);
                 else if (Bot.HasInMonstersZone(CardId.Eva) && Bot.Graveyard.Count(card => card != null && card.HasAttribute(CardAttribute.Light) && card.HasRace(CardRace.Fairy)) > 0
-                    && (CheckRemainInDeck(CardId.HeraldofGreenLight) > 0 || CheckRemainInDeck(CardId.HeraldofOrangeLight) > 0)) AI.SelectCard(CardId.Eva);
+                    && (Bot.HasInDeck(CardId.HeraldofGreenLight) || Bot.HasInDeck(CardId.HeraldofOrangeLight))) AI.SelectCard(CardId.Eva);
                 else if ((Bot.HasInExtra(CardId.TearlamentsRulkallos) && !Bot.HasInGraveyard(CardId.TearlamentsKitkallos))
                     || (Bot.HasInExtra(CardId.PredaplantDragostapelia) && Bot.Graveyard.Count(card => card != null && card.HasType(CardType.Fusion)) <= 0)) AI.SelectCard(CardId.TearlamentsKitkallos);
                 else if (Bot.HasInMonstersZone(CardId.ShaddollDragon) && Enemy.GetSpellCount() > 0) AI.SelectCard(CardId.ShaddollDragon);
@@ -2598,9 +2550,9 @@ namespace WindBot.Game.AI.Decks
             }
             if (loc == CardLocation.Deck)
             {
-                if (!activate_TearlamentsScheiren_2 && CheckRemainInDeck(CardId.TearlamentsScheiren)>0) return true;
-                if (!activate_TearlamentsHavnis_2 && CheckRemainInDeck(CardId.TearlamentsHavnis)>0) return true;
-                if (!activate_TearlamentsMerrli_2 && CheckRemainInDeck(CardId.TearlamentsMerrli)>0) return true;
+                if (!activate_TearlamentsScheiren_2 && Bot.HasInDeck(CardId.TearlamentsScheiren)) return true;
+                if (!activate_TearlamentsHavnis_2 && Bot.HasInDeck(CardId.TearlamentsHavnis)) return true;
+                if (!activate_TearlamentsMerrli_2 && Bot.HasInDeck(CardId.TearlamentsMerrli)) return true;
             }
             return false;
         }
@@ -2625,9 +2577,9 @@ namespace WindBot.Game.AI.Decks
                         if (Duel.LastChainPlayer == 0  || Duel.CurrentChain.Count(ccard=>ccard!=null &&ccard.Controller==0
                             && (ccard.Id==CardId.TearlamentsHavnis || ccard.Id == CardId.TearlamentsMerrli || ccard.Id == CardId.TearlamentsScheiren))>0) return false;
                         if (((Bot.HasInMonstersZone(CardId.TearlamentsKitkallos,false,false,true) && !activate_TearlamentsKitkallos_3 && IsShouldSummonFusion(SETCODE, (int)CardRace.Aqua)
-                            && ((CheckRemainInDeck(CardId.TearlamentsHavnis) > 0 && !activate_TearlamentsHavnis_2)
-                            || (CheckRemainInDeck(CardId.TearlamentsMerrli) > 0 && !activate_TearlamentsMerrli_2)
-                            || (CheckRemainInDeck(CardId.TearlamentsScheiren) > 0 && !activate_TearlamentsScheiren_2)) && Bot.GetMonsterCount()<3)
+                            && ((Bot.HasInDeck(CardId.TearlamentsHavnis) && !activate_TearlamentsHavnis_2)
+                            || (Bot.HasInDeck(CardId.TearlamentsMerrli) && !activate_TearlamentsMerrli_2)
+                            || (Bot.HasInDeck(CardId.TearlamentsScheiren) && !activate_TearlamentsScheiren_2)) && Bot.GetMonsterCount()<3)
                             ||(IsCanFusionSummon() && (Bot.HasInMonstersZone(CardId.TearlamentsScheiren) || Bot.HasInMonstersZone(CardId.TearlamentsHavnis)
                             || Bot.HasInMonstersZone(CardId.TearlamentsMerrli))) || (!activate_TearlamentsReinoheart_2 && Bot.HasInMonstersZone(CardId.TearlamentsReinoheart) && (HasinZoneKeyCard(CardLocation.Hand)
                             || (Bot.Hand.Count(ccard=> ccard != null && ccard.HasSetcode(SETCODE))>0 && HasinZoneKeyCard(CardLocation.Deck)))&& IsShouldSummonFusion(SETCODE, (int)CardRace.Aqua))) && IsCanSpSummon())

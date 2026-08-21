@@ -53,7 +53,6 @@ namespace WindBot.Game.AI.Decks
 
         private bool normal_summon = false;
         private bool p_summoned = false;
-        private bool p_summoning = false;
         private bool activate_Motorbike = false;//摩托
         private bool activate_Wakaushi = false;//神童
         private bool activate_Scales = false;//天秤
@@ -116,7 +115,6 @@ namespace WindBot.Game.AI.Decks
             AddExecutor(ExecutorType.Activate, CardId.Soulpiercer,SoulpiercerFunction);
 
             AddExecutor(ExecutorType.Summon, CardId.Wagon,NormalSummonFunction);
-            AddExecutor(ExecutorType.Activate, CardId.Wagon,WagonFunction);
             AddExecutor(ExecutorType.Activate, CardId.Wagon,WagonFunction);
 
             AddExecutor(ExecutorType.Summon, CardId.Booster,BoosterNormalSummonFunction);
@@ -192,7 +190,6 @@ namespace WindBot.Game.AI.Decks
         {
             normal_summon = false;
             p_summoned = false;
-            p_summoning = false;
             activate_Motorbike = false;
             activate_Wakaushi = false;
             activate_Scales = false;
@@ -282,19 +279,11 @@ namespace WindBot.Game.AI.Decks
             }
             return base.OnSelectPlace(cardId, player, location, available);
         }
-        public override IList<ClientCard> OnSelectCard(IList<ClientCard> cards, int min, int max, int hint, bool cancelable)
+        public override IList<ClientCard> OnSelectPendulumSummon(IList<ClientCard> cards, int min, int max)
         {
-            if (AI.HaveSelectedCards()) return null;
-            if (p_summoning || (Card != null && (Card == Bot.SpellZone[0] || Card == Bot.SpellZone[4]) && hint == HintMsg.SpSummon && Card.HasType(CardType.Pendulum)))
-            {
-                List<ClientCard> result = new List<ClientCard>();
-                List<ClientCard> scards = cards.Where(card => card != null && card.HasSetcode(0x9a) && card.Level == 4).ToList();
-                if (scards.Count <2) scards = cards.Where(card => card != null && card.HasSetcode(0x9a)).ToList();
-                p_summoning = false;
-                if (scards.Count > 0) return Util.CheckSelectCount(result, scards, 1, 1);
-                else if (min == 0) return result; // empty
-            }
-            return base.OnSelectCard(cards, min, max, hint, cancelable);
+            List<ClientCard> scards = cards.Where(card => card != null && card.HasSetcode(0x9a) && card.Level == 4).ToList();
+            if (scards.Count < 2) scards = cards.Where(card => card != null && card.HasSetcode(0x9a)).ToList();
+            return Util.CheckSelectCount(scards, cards, min, max);
         }
         private List<ClientCard> GetZoneCards(CardLocation loc, ClientField player)
         {
@@ -331,7 +320,6 @@ namespace WindBot.Game.AI.Decks
             List<ClientCard> cards = GetZoneCards(CardLocation.Hand, Bot).Where(card => card != null && card.HasSetcode(0x9a) && card.Level > 1 && card.Level < 8).ToList();
             if (cards.Count > 0 && Card.Location == CardLocation.SpellZone)
             {
-                p_summoning = true;
                 p_summoned = true;
                 return true;
             }
@@ -426,7 +414,7 @@ namespace WindBot.Game.AI.Decks
         }
         private bool WagonFunction()
         {
-            if (ActivateDescription == Util.GetStringId(CardId.Wagon, 0))
+            if (ActivateDescription == -1 || ActivateDescription == Util.GetStringId(CardId.Wagon, 0))
                 return Card.IsAttack();
             if (ActivateDescription == Util.GetStringId(CardId.Wagon, 1))
             {
@@ -447,10 +435,7 @@ namespace WindBot.Game.AI.Decks
                 activate_Wagon = true;
                 return true;
             }
-            else
-            {
-                return true;
-            }
+            return false;
         }
         private bool SoulpiercerFunction()
         {
@@ -678,7 +663,8 @@ namespace WindBot.Game.AI.Decks
             {
                 return true;
             }
-            else if (ActivateDescription == Util.GetStringId(CardId.ASStardustDragon, 0))
+            else if (ActivateDescription == -1
+                || ActivateDescription == Util.GetStringId(CardId.ASStardustDragon, 0))
             {
 
                 int targetid = -1;
@@ -1043,7 +1029,7 @@ namespace WindBot.Game.AI.Decks
         }
         private bool GeniusFunction()
         {
-            if (ActivateDescription == Util.GetStringId(CardId.Genius,1))
+            if (ActivateDescription == -1 || ActivateDescription == Util.GetStringId(CardId.Genius,1))
             {
                 AI.SelectCard(CardId.Regulus);
                 activate_Genius = true;

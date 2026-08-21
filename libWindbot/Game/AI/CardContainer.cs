@@ -16,6 +16,17 @@ namespace WindBot.Game.AI
             return 1;
         }
 
+        public static int CompareCardAttackPower(ClientCard cardA, ClientCard cardB)
+        {
+            int powerA = cardA.GetAttackPower();
+            int powerB = cardB.GetAttackPower();
+            if (powerA < powerB)
+                return -1;
+            if (powerA == powerB)
+                return 0;
+            return 1;
+        }
+
         public static int CompareCardLevel(ClientCard cardA, ClientCard cardB)
         {
             if (cardA.Level < cardB.Level)
@@ -83,16 +94,6 @@ namespace WindBot.Game.AI
                 .FirstOrDefault();
         }
 
-        public static bool ContainsMonsterWithLevel(this IEnumerable<ClientCard> cards, int level)
-        {
-            return cards.Where(card => card?.Data != null).Any(card => !card.HasType(CardType.Xyz) && card.Level == level);
-        }
-
-        public static bool ContainsMonsterWithRank(this IEnumerable<ClientCard> cards, int rank)
-        {
-            return cards.Where(card => card?.Data != null).Any(card => card.HasType(CardType.Xyz) && card.Rank == rank);
-        }
-
         public static bool ContainsCardWithId(this IEnumerable<ClientCard> cards, int id)
         {
             return cards.Where(card => card?.Data != null).Any(card => card.IsCode(id));
@@ -101,6 +102,11 @@ namespace WindBot.Game.AI
         public static int GetCardCount(this IEnumerable<ClientCard> cards, int id)
         {
             return cards.Where(card => card?.Data != null).Count(card => card.IsCode(id));
+        }
+
+        public static int GetCardCount(this IEnumerable<ClientCard> cards, IList<int> ids)
+        {
+            return cards.Where(card => card?.Data != null).Count(card => card.IsCode(ids));
         }
 
         public static List<ClientCard> GetMonsters(this IEnumerable<ClientCard> cards)

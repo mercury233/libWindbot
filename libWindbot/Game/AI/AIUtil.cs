@@ -18,11 +18,13 @@ namespace WindBot.Game.AI
         }
 
         /// <summary>
-        /// Get the total ATK Monster of the player.
+        /// Get the total attacking power of the player's monsters.
         /// </summary>
         public int GetTotalAttackingMonsterAttack(int player)
         {
-            return Duel.Fields[player].GetMonsters().Where(m => m.IsAttack()).Sum(m => (int?)m.Attack) ?? 0;
+            return Duel.Fields[player].GetMonsters()
+                .Where(m => m.IsAttack() || m.IsMonsterAttackWhileInDefPos())
+                .Sum(m => (int?)m.GetAttackPower()) ?? 0;
         }
         /// <summary>
         /// Get the best ATK or DEF power of the field.
@@ -424,8 +426,13 @@ namespace WindBot.Game.AI
         /// </summary>
         public IList<ClientCard> CheckSelectCount(IList<ClientCard> _selected, IList<ClientCard> cards, int min, int max)
         {
+            if (max == 0)
+                Logger.WriteErrorLine("CheckSelectCount called with max = 0.");
+            if (_selected.Count == 0 && min == 0)
+                Logger.DebugWriteLine("CheckSelectCount called without preferred cards when min is 0.", true);
             if (_selected.Any(card => !cards.Contains(card)))
                 Logger.DebugWriteLine("Selected cards contain cards outside the available candidates.", true);
+
             var selected = _selected.Where(cards.Contains).Distinct().ToList();
             if (selected.Count < min)
             {
@@ -562,6 +569,32 @@ namespace WindBot.Game.AI
                     result.Add(materials);
             }
             return result;
+        }
+
+        /// <summary>
+        /// Shuffle a list using Fisher–Yates shuffle
+        /// </summary>
+        /// <param name="list">The original list</param>
+        /// <returns>The shuffled copy of the list</returns>
+        public List<T> ShuffleList<T>(IList<T> list)
+        {
+            List<T> result = new List<T>(list);
+            ShuffleListInPlace(result);
+            return result;
+        }
+
+        /// <summary>
+        /// Shuffle a list in place using Fisher–Yates shuffle
+        /// </summary>
+        /// <param name="list">The list to shuffle</param>
+        public void ShuffleListInPlace<T>(IList<T> list)
+        {
+            int n = list.Count;
+            while (n-- > 1)
+            {
+                int index = Program.Rand.Next(n + 1);
+                (list[n], list[index]) = (list[index], list[n]);
+            }
         }
     }
 }

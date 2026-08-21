@@ -63,43 +63,6 @@ namespace WindBot.Game.AI.Decks
         List<int> notToNegateIdList = new List<int> { 58699500, 20343502, 19403423 };
         List<int> notToDestroySpellTrap = new List<int> { 50005218, 6767771 };
 
-        Dictionary<int, List<int>> DeckCountTable = new Dictionary<int, List<int>>
-        {
-            { 3, new List<int>
-                {
-                    CardId.RegenArch,
-                    CardId.Origin,
-                    CardId.Royal,
-                    CardId.Highness,
-                    CardId.PMBeryl,
-                    CardId.Makourai,
-                    CardId.Strategy,
-                    CardId.Usurpation,
-                    CardId.PMLL,
-                }
-            },
-
-            { 2, new List<int>
-                {
-                    _CardId.AshBlossom,
-                    CardId.SMSkull,
-                    _CardId.PotOfExtravagance,
-                    _CardId.InfiniteImpermanence
-                }
-            },
-
-            { 1, new List<int>
-                {
-                    _CardId.MaxxC,
-                    //_CardId.CalledByTheGrave,
-                    CardId.PMDR,
-                    CardId.Simul,
-                    CardId.RegenSage,
-                    CardId.Playtime
-
-                }
-            },
-        };
 
         private static readonly int[] PreferDiscard =
         {
@@ -195,17 +158,6 @@ namespace WindBot.Game.AI.Decks
             return base.OnSelectYesNo(desc);
         }
 
-        public int CheckRemainInDeck(int id)
-        {
-            for (int count = 1; count < 4; ++count)
-            {
-                if (DeckCountTable[count].Contains(id))
-                {
-                    return Bot.GetRemainingCount(id, count);
-                }
-            }
-            return 0;
-        }
         public bool CheckAtAdvantage()
         {
             if (GetProblematicEnemyMonster() == null && Bot.GetMonsters().Any(card => card.IsFaceup()))
@@ -246,7 +198,7 @@ namespace WindBot.Game.AI.Decks
                 if (alias != 0 && alias - code < 10) code = alias;
                 if (code == 0) return false;
                 if (DefaultCheckWhetherCardIdIsNegated(code)) return false;
-                if (CheckRemainInDeck(code) > 0)
+                if (Bot.HasInDeck(code))
                 {
                     if (!(Card.Location == CardLocation.SpellZone))
                     {
@@ -479,18 +431,14 @@ namespace WindBot.Game.AI.Decks
             if (DefaultCheckWhetherCardIsNegated(Card)) return true;
             if (isMonster && (toFieldCheck || Card.Location == CardLocation.MonsterZone))
             {
-                if ((toFieldCheck && (((int)type & (int)CardType.Link) != 0)) || Card.IsDefense())
+                if ((toFieldCheck && (((int)type & (int)CardType.Link) == 0)) || Card.IsDefense())
                 {
-                    if (Enemy.MonsterZone.Any(card => CheckNumber41(card)) || Bot.MonsterZone.Any(card => CheckNumber41(card))) return true;
+                    if (DefaultCheckWhetherNumber41IsActive()) return true;
                 }
                 if (Enemy.HasInSpellZone(CardId.SkillDrain, true)) return true;
             }
             if (disablecheck) return (Card.Location == CardLocation.MonsterZone || Card.Location == CardLocation.SpellZone) && Card.IsDisabled() && Card.IsFaceup();
             return false;
-        }
-        public bool CheckNumber41(ClientCard card)
-        {
-            return card != null && card.IsFaceup() && card.IsCode(CardId.Number41BagooskatheTerriblyTiredTapir) && card.IsDefense() && !card.IsDisabled();
         }
         public void SelectSTPlace(ClientCard card = null, bool avoidImpermanence = false, List<int> avoidList = null)
         {
@@ -506,15 +454,7 @@ namespace WindBot.Game.AI.Decks
                     list.Add(seq);
                 }
             }
-            int n = list.Count;
-            while (n-- > 1)
-            {
-                int index = Program.Rand.Next(list.Count);
-                int nextIndex = (index + Program.Rand.Next(list.Count - 1)) % list.Count;
-                int tempInt = list[index];
-                list[index] = list[nextIndex];
-                list[nextIndex] = tempInt;
-            }
+            Util.ShuffleListInPlace(list);
             if (avoidImpermanence && Bot.GetMonsters().Any(c => c.IsFaceup() && !c.IsDisabled()))
             {
                 foreach (int seq in list)
@@ -622,20 +562,6 @@ namespace WindBot.Game.AI.Decks
         {
             return !currentDestroyCardList.Contains(cards) && !currentNegateCardList.Contains(cards);
         }
-        public List<T> ShuffleList<T>(List<T> list)
-        {
-            List<T> result = list;
-            int n = result.Count;
-            while (n-- > 1)
-            {
-                int index = Program.Rand.Next(result.Count);
-                int nextIndex = (index + Program.Rand.Next(result.Count - 1)) % result.Count;
-                T tempCard = result[index];
-                result[index] = result[nextIndex];
-                result[nextIndex] = tempCard;
-            }
-            return result;
-        }
         public List<ClientCard> GetProblematicEnemyCardList(bool canBeTarget = false, bool ignoreSpells = false, CardType selfType = 0)
         {
             List<ClientCard> resultList = new List<ClientCard>();
@@ -646,7 +572,7 @@ namespace WindBot.Game.AI.Decks
 
             List<ClientCard> problemEnemySpellList = Enemy.SpellZone.Where(c => c?.Data != null && !resultList.Contains(c) && !currentDestroyCardList.Contains(c)
                 && c.IsFloodgate() && c.IsFaceup() && CheckCanBeTargeted(c, canBeTarget, selfType)).ToList();
-            if (problemEnemySpellList.Count > 0) resultList.AddRange(ShuffleList(problemEnemySpellList));
+            if (problemEnemySpellList.Count > 0) resultList.AddRange(Util.ShuffleList(problemEnemySpellList));
 
             List<ClientCard> dangerList = Enemy.MonsterZone.Where(c => c?.Data != null && !resultList.Contains(c) && !currentDestroyCardList.Contains(c)
                 && c.IsMonsterDangerous() && c.IsFaceup() && CheckCanBeTargeted(c, canBeTarget, selfType)).OrderByDescending(card => card.Attack).ToList();
@@ -673,7 +599,7 @@ namespace WindBot.Game.AI.Decks
             List<ClientCard> spells = Enemy.GetSpells().Where(c => c.IsFaceup() && !currentDestroyCardList.Contains(c)
                 && c.HasType(CardType.Equip | CardType.Pendulum | CardType.Field | CardType.Continuous) && CheckCanBeTargeted(c, canBeTarget, selfType)
                 && !notToDestroySpellTrap.Contains(c.Id)).ToList();
-            if (spells.Count > 0 && !ignoreSpells) resultList.AddRange(ShuffleList(spells));
+            if (spells.Count > 0 && !ignoreSpells) resultList.AddRange(Util.ShuffleList(spells));
 
             return resultList;
         }
@@ -685,9 +611,9 @@ namespace WindBot.Game.AI.Decks
             enemyMonster.Sort(CardContainer.CompareCardAttack);
             enemyMonster.Reverse();
             targetList.AddRange(enemyMonster);
-            targetList.AddRange(ShuffleList(Enemy.GetSpells().Where(card => (!ignoreCurrentDestroy || !currentDestroyCardList.Contains(card)) && enemyPlaceThisTurn.Contains(card)).ToList()));
-            targetList.AddRange(ShuffleList(Enemy.GetSpells().Where(card => (!ignoreCurrentDestroy || !currentDestroyCardList.Contains(card)) && !enemyPlaceThisTurn.Contains(card)).ToList()));
-            targetList.AddRange(ShuffleList(Enemy.GetMonsters().Where(card => card.IsFacedown() && (!ignoreCurrentDestroy || !currentDestroyCardList.Contains(card))).ToList()));
+            targetList.AddRange(Util.ShuffleList(Enemy.GetSpells().Where(card => (!ignoreCurrentDestroy || !currentDestroyCardList.Contains(card)) && enemyPlaceThisTurn.Contains(card)).ToList()));
+            targetList.AddRange(Util.ShuffleList(Enemy.GetSpells().Where(card => (!ignoreCurrentDestroy || !currentDestroyCardList.Contains(card)) && !enemyPlaceThisTurn.Contains(card)).ToList()));
+            targetList.AddRange(Util.ShuffleList(Enemy.GetMonsters().Where(card => card.IsFacedown() && (!ignoreCurrentDestroy || !currentDestroyCardList.Contains(card))).ToList()));
 
             return targetList;
         }
@@ -726,7 +652,7 @@ namespace WindBot.Game.AI.Decks
             card = Enemy.MonsterZone.GetHighestAttackMonster(canBeTarget);
             if (card != null) return card;
             List<ClientCard> monsters = Enemy.GetMonsters();
-            if (monsters.Count > 0 && !onlyFaceup) return ShuffleCardList(monsters)[0];
+            if (monsters.Count > 0 && !onlyFaceup) return Util.ShuffleList(monsters)[0];
             return null;
         }
         public ClientCard GetBestEnemySpell(bool onlyFaceup = false, bool canBeTarget = false)
@@ -735,7 +661,7 @@ namespace WindBot.Game.AI.Decks
                 && c.IsFloodgate() && c.IsFaceup() && (!canBeTarget || !c.IsShouldNotBeTarget())).ToList();
             if (problemEnemySpellList.Count > 0)
             {
-                return ShuffleCardList(problemEnemySpellList)[0];
+                return Util.ShuffleList(problemEnemySpellList)[0];
             }
 
             List<ClientCard> spells = Enemy.GetSpells().Where(card => !(card.IsFaceup() && card.IsCode(_CardId.EvenlyMatched))).ToList();
@@ -743,28 +669,15 @@ namespace WindBot.Game.AI.Decks
             List<ClientCard> faceUpList = spells.Where(ecard => ecard.IsFaceup() && (ecard.HasType(CardType.Continuous) || ecard.HasType(CardType.Field) || ecard.HasType(CardType.Pendulum))).ToList();
             if (faceUpList.Count > 0)
             {
-                return ShuffleCardList(faceUpList)[0];
+                return Util.ShuffleList(faceUpList)[0];
             }
 
             if (spells.Count > 0 && !onlyFaceup)
             {
-                return ShuffleCardList(spells)[0];
+                return Util.ShuffleList(spells)[0];
             }
 
             return null;
-        }
-        public List<ClientCard> ShuffleCardList(List<ClientCard> list)
-        {
-            List<ClientCard> result = list;
-            int n = result.Count;
-            while (n-- > 1)
-            {
-                int index = Program.Rand.Next(n + 1);
-                ClientCard temp = result[index];
-                result[index] = result[n];
-                result[n] = temp;
-            }
-            return result;
         }
         public ClientCard GetBestEnemyCard(bool onlyFaceup = false, bool canBeTarget = false, bool checkGrave = false)
         {
@@ -783,7 +696,7 @@ namespace WindBot.Game.AI.Decks
                     graveMonsterList.Reverse();
                     return graveMonsterList[0];
                 }
-                return ShuffleCardList(Enemy.Graveyard.ToList())[0];
+                return Util.ShuffleList(Enemy.Graveyard.ToList())[0];
             }
             return null;
         }
@@ -795,7 +708,7 @@ namespace WindBot.Game.AI.Decks
             if (card.HasSetcode(_Setcode.Danger) && card.Location == CardLocation.Hand) return false;
             if (card.IsMonster() && card.Location == CardLocation.MonsterZone && card.HasPosition(CardPosition.Defence))
             {
-                if (Enemy.MonsterZone.Any(c => CheckNumber41(c)) || Bot.MonsterZone.Any(c => CheckNumber41(c))) return false;
+                if (DefaultCheckWhetherNumber41IsActive()) return false;
             }
             if (DefaultCheckWhetherCardIsNegated(card)) return false;
             if (card.Location == CardLocation.SpellZone)
@@ -852,7 +765,7 @@ namespace WindBot.Game.AI.Decks
                                     }
                                 }
                                 // select enemy cards
-                                List<ClientCard> enemyCards = ShuffleList(cards.Where(c => c.Controller == 1).ToList());
+                                List<ClientCard> enemyCards = Util.ShuffleList(cards.Where(c => c.Controller == 1).ToList());
                                 foreach (ClientCard target in enemyCards)
                                 {
                                     if (cards.Contains(target))
@@ -948,7 +861,7 @@ namespace WindBot.Game.AI.Decks
 
                                     foreach (int targetId in targetIdList)
                                     {
-                                        if (CheckRemainInDeck(targetId) <= 0) continue;
+                                        if (!Bot.HasInDeck(targetId)) continue;
 
                                         ClientCard target = cards.FirstOrDefault(c => c.IsCode(targetId));
                                         if (target != null)
@@ -1072,18 +985,18 @@ namespace WindBot.Game.AI.Decks
                                 List<ClientCard> faceDownMonsters = botMonsters.Where(card => card.IsFacedown()).ToList();
                                 banishList.AddRange(faceDownMonsters);
                                 List<ClientCard> dumpMainMonsterList = botMonsters.Where(card => !banishList.Contains(card)
-                                    && CheckRemainInDeck(card.Id) > 0).ToList();
+                                    && Bot.HasInDeck(card.GetNonAltartCode())).ToList();
                                 dumpMainMonsterList.Sort(CardContainer.CompareCardAttack);
                                 banishList.AddRange(dumpMainMonsterList);
                                 // spells
                                 List<ClientCard> faceUpSpells = Bot.GetSpells().Where(c => c.IsFaceup()).ToList();
-                                banishList.AddRange(ShuffleList(faceUpSpells));
+                                banishList.AddRange(Util.ShuffleList(faceUpSpells));
                                 // other monster
                                 List<ClientCard> otherMonsters = botMonsters.Where(card => !banishList.Contains(card)).ToList();
                                 otherMonsters.Sort(CardContainer.CompareCardAttack);
                                 banishList.AddRange(otherMonsters);
                                 List<ClientCard> faceDownSpells = Bot.GetSpells().Where(c => c.IsFacedown()).ToList();
-                                banishList.AddRange(ShuffleList(faceDownSpells));
+                                banishList.AddRange(Util.ShuffleList(faceDownSpells));
                                 return Util.CheckSelectCount(banishList, cards, min, max);
                             }
                         default:
@@ -1231,10 +1144,10 @@ namespace WindBot.Game.AI.Decks
             if (Bot.HasInHandOrHasInMonstersZone(CardId.PMBeryl) && DefaultCheckWhetherBotCanSearch())
             {
                 // for search drillbeam
-                activateFlag |= CheckRemainInDeck(CardId.PMDR) > 0;
+                activateFlag |= Bot.HasInDeck(CardId.PMDR);
                 activateFlag |= summonCount <= 0 && Card.Location == CardLocation.SpellZone && Card.IsFacedown();
             }
-            if (summonCount > 0 && !Bot.HasInHand(CardId.PMBeryl) && CheckRemainInDeck(CardId.PMBeryl) > 0 && DefaultCheckWhetherBotCanSearch())
+            if (summonCount > 0 && !Bot.HasInHand(CardId.PMBeryl) && Bot.HasInDeck(CardId.PMBeryl) && DefaultCheckWhetherBotCanSearch())
             {
                 // for search ether beryl
                 activateFlag |= Bot.HasInGraveyard(CardId.PMDR);
@@ -1243,7 +1156,7 @@ namespace WindBot.Game.AI.Decks
             if (Bot.HasInHandOrHasInMonstersZone(CardId.SMSkull) && DefaultCheckWhetherBotCanSearch())
             {
                 // for search drillbeam
-                activateFlag |= CheckRemainInDeck(CardId.PMDR) > 0;
+                activateFlag |= Bot.HasInDeck(CardId.PMDR);
                 activateFlag |= summonCount <= 0 && Card.Location == CardLocation.SpellZone && Card.IsFacedown();
             }
             if (!Bot.HasInSpellZone(CardId.PMLL, true, true))
@@ -1253,7 +1166,7 @@ namespace WindBot.Game.AI.Decks
 
                 // for special summon
                 bool hasSMSkull = Bot.HasInHand(CardId.SMSkull)
-                                 || CheckRemainInDeck(CardId.SMSkull) > 0
+                                 || Bot.HasInDeck(CardId.SMSkull)
                                  || Bot.HasInGraveyard(CardId.SMSkull);
 
                 if (!hasSMSkull)
@@ -1297,7 +1210,7 @@ namespace WindBot.Game.AI.Decks
             {
                 loc = CardLocation.Hand;
             }
-            else if (CheckRemainInDeck(CardId.SMSkull) > 0)
+            else if (Bot.HasInDeck(CardId.SMSkull))
             {
                 loc = CardLocation.Deck;
             }
@@ -1436,8 +1349,8 @@ namespace WindBot.Game.AI.Decks
                 // summon to search?
                 if (!CheckWhetherNegated(true, true))
                 {
-                    summonFlag |= !activatedCardIdList.Contains(CardId.PMLL) && !Bot.HasInHandOrInSpellZone(CardId.PMLL) && CheckRemainInDeck(CardId.PMLL) > 0;
-                    summonFlag |= CheckRemainInDeck(CardId.PMDR) > 0;
+                    summonFlag |= !activatedCardIdList.Contains(CardId.PMLL) && !Bot.HasInHandOrInSpellZone(CardId.PMLL) && Bot.HasInDeck(CardId.PMLL);
+                    summonFlag |= Bot.HasInDeck(CardId.PMDR);
                 }
 
                 // summon to recycle beam
@@ -1481,7 +1394,7 @@ namespace WindBot.Game.AI.Decks
         }
         private bool ShouldPMLLSearchDrillbeam()
         {
-            if (CheckRemainInDeck(CardId.PMDR) <= 0) return false;
+            if (!Bot.HasInDeck(CardId.PMDR)) return false;
 
             if (Bot.HasInHand(CardId.PMDR) || Bot.HasInSpellZone(CardId.PMDR))
                 return false;
@@ -1538,7 +1451,7 @@ namespace WindBot.Game.AI.Decks
         }
         private bool CanPlaytimeSummon(int id)
         {
-            return Bot.HasInHand(id) || CheckRemainInDeck(id) > 0;
+            return Bot.HasInHand(id) || Bot.HasInDeck(id);
         }
         private bool Usurpation()
         {
@@ -1603,7 +1516,7 @@ namespace WindBot.Game.AI.Decks
 
         private bool CanSetArchfiendTrap(int id)
         {
-            return Bot.HasInGraveyard(id) || CheckRemainInDeck(id) > 0;
+            return Bot.HasInGraveyard(id) || Bot.HasInDeck(id);
         }
 
         private bool StrategyActivate()
@@ -1698,7 +1611,7 @@ namespace WindBot.Game.AI.Decks
             foreach (int id in priority)
             {
                 if (id == exceptId) continue;
-                if (CheckRemainInDeck(id) <= 0) continue;
+                if (!Bot.HasInDeck(id)) continue;
                 if (HasUnusedInHand(id)) continue;
 
                 return id;
@@ -1723,7 +1636,7 @@ namespace WindBot.Game.AI.Decks
                 CardId.Royal
             }
             .Where(id => id != CardId.Highness)
-            .Where(id => CheckRemainInDeck(id) > 0)
+            .Where(id => Bot.HasInDeck(id))
             .OrderBy(id => GetHighnessSearchPriority(id))
             .Take(2)
             .ToList();
@@ -1821,7 +1734,7 @@ namespace WindBot.Game.AI.Decks
 
             if (Card.Location == CardLocation.MonsterZone)
             {
-                if (Bot.HasInHand(CardId.SMSkull) || CheckRemainInDeck(CardId.SMSkull) > 0 || Bot.HasInGraveyard(CardId.SMSkull))
+                if (Bot.HasInHand(CardId.SMSkull) || Bot.HasInDeck(CardId.SMSkull) || Bot.HasInGraveyard(CardId.SMSkull))
                 {
                     AI.SelectCard(CardId.SMSkull);
                     return true;

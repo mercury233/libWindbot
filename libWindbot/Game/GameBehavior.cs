@@ -28,6 +28,10 @@ namespace WindBot.Game
         private Duel _duel;
         private int _hand;
         private bool _debug;
+        private bool _isTag;
+        private bool _botDeckActive;
+        private bool _botDeckNeedsInitialHandSync;
+        private bool _chatPlayerOrderSwapped;
         private int _select_hint;
         private GameMessage _lastMessage;
 
@@ -55,6 +59,28 @@ namespace WindBot.Game
         public int GetLocalPlayer(int player)
         {
             return _duel.IsFirst ? player : 1 - player;
+        }
+
+        private void TrackDeckMove(int cardId, int previousController, int previousLocation, int currentController, int currentLocation)
+        {
+            if (!_botDeckActive)
+                return;
+
+            bool leavesBotDeck = previousController == 0 && previousLocation == (int)CardLocation.Deck;
+            bool entersBotDeck = currentController == 0 && currentLocation == (int)CardLocation.Deck;
+            if (leavesBotDeck == entersBotDeck)
+                return;
+
+            if (leavesBotDeck)
+                _duel.Fields[0].TrackRemoveFromDeck(cardId);
+            else
+                _duel.Fields[0].TrackAddToDeck(cardId);
+        }
+
+        private void ValidateBotDeckCount()
+        {
+            if (_botDeckActive)
+                _duel.Fields[0].ValidateTrackedDeckCount(_duel.Fields[0].Deck.Count);
         }
 
         public void OnPacket(BinaryReader packet)
@@ -100,6 +126,7 @@ namespace WindBot.Game
             _messages.Add(GameMessage.ShuffleExtra, OnShuffleExtra);
             _messages.Add(GameMessage.ShuffleSetCard, OnShuffleSetCard);
             _messages.Add(GameMessage.SwapGraveDeck, OnSwapGraveDeck);
+            _messages.Add(GameMessage.ReverseDeck, OnReverseDeck);
             _messages.Add(GameMessage.TagSwap, OnTagSwap);
             _messages.Add(GameMessage.NewTurn, OnNewTurn);
             _messages.Add(GameMessage.NewPhase, OnNewPhase);
@@ -155,14 +182,20 @@ namespace WindBot.Game
             _messages.Add(GameMessage.FlipSummoned, OnSummoned);
             _messages.Add(GameMessage.ConfirmCards, OnConfirmCards);
             _messages.Add(GameMessage.PlayerHint, OnPlayerHint);
+
+            // ConfirmDecktop, DeckTop and ConfirmExtratop are intentionally not registered.
+            // Effects that inspect or return cards may temporarily reveal cards in either Main Deck
+            // or the opponent's face-down Extra Deck, but deck executors currently cannot rely on
+            // that transient knowledge when making decisions.
         }
 
         private void OnJoinGame(BinaryReader packet)
         {
             /*int lflist = (int)*/ packet.ReadUInt32();
             /*int rule = */ packet.ReadByte();
-            /*int mode = */ packet.ReadByte();
+            int mode = packet.ReadByte();
             int duel_rule = packet.ReadByte();
+            _isTag = (mode == 2);
             _ai.Duel.IsNewRule = (duel_rule >= 4);
             _ai.Duel.IsNewRule2020 = (duel_rule >= 5);
             BinaryWriter deck = GamePacketFactory.Create(CtosMessage.UpdateDeck);
@@ -180,6 +213,7 @@ namespace WindBot.Game
 
         private void OnChangeSide(BinaryReader packet)
         {
+            _chatPlayerOrderSwapped = false;
             BinaryWriter deck = GamePacketFactory.Create(CtosMessage.UpdateDeck);
             deck.Write(Deck.Cards.Count + Deck.ExtraCards.Count);
             deck.Write(Deck.SideCards.Count);
@@ -241,7 +275,9 @@ namespace WindBot.Game
                 _room.Names[pos] = null;
             }
 
-            if (_room.IsHost && _room.IsReady[0] && _room.IsReady[1])
+            bool allPlayersReady = _room.IsReady[0] && _room.IsReady[1] &&
+                (!_isTag || (_room.IsReady[2] && _room.IsReady[3]));
+            if (_room.IsHost && allPlayersReady)
                 Connection.Send(CtosMessage.HsStart);
         }
 
@@ -297,14 +333,20 @@ namespace WindBot.Game
         private void OnChat(BinaryReader packet)
         {
             if (Program.ServerMode) return;
-            int player = packet.ReadInt16();
+            int player = packet.ReadUInt16();
             string message = packet.ReadUnicode(256);
-            string myName = (player != 0) ? _room.Names[1] : _room.Names[0];
-            string otherName = (player == 0) ? _room.Names[1] : _room.Names[0];
             if (player < 4)
-                Logger.DebugWriteLine(otherName + " say to " + myName + ": " + message);
-            else
+            {
+                int namePosition = player;
+                if (_chatPlayerOrderSwapped)
+                    namePosition = _isTag ? player ^ 2 : 1 - player;
+                string playerName = _room.Names[namePosition] ?? "Player " + namePosition;
+                Logger.DebugWriteLine(playerName + " says: " + message);
+            }
+            else if (player == 8 || (player >= 11 && player <= 19))
                 Logger.DebugWriteLine("System message(" + player + "): " + message);
+            else
+                Logger.DebugWriteLine("Spectator or unknown message(" + player + "): " + message);
         }
 
         private void OnErrorMsg(BinaryReader packet)
@@ -379,6 +421,9 @@ namespace WindBot.Game
         {
             int type = packet.ReadByte();
             _duel.IsFirst = (type & 0xF) == 0;
+            // The server may reorder player types for turn order, while room names remain in lobby slots.
+            int roomTeam = _isTag ? _room.Position / 2 : _room.Position;
+            _chatPlayerOrderSwapped = roomTeam != (_duel.IsFirst ? 0 : 1);
             _duel.Turn = 0;
             _duel.LastChainLocation = 0;
             _duel.LastChainPlayer = -1;
@@ -388,14 +433,26 @@ namespace WindBot.Game
             int duel_rule = packet.ReadByte();
             _ai.Duel.IsNewRule = (duel_rule >= 4);
             _ai.Duel.IsNewRule2020 = (duel_rule >= 5);
+            _duel.DeckReversed = false;
             _duel.Fields[GetLocalPlayer(0)].LifePoints = packet.ReadInt32();
             _duel.Fields[GetLocalPlayer(1)].LifePoints = packet.ReadInt32();
             int deck = packet.ReadInt16();
             int extra = packet.ReadInt16();
-            _duel.Fields[GetLocalPlayer(0)].Init(deck, extra);
+            _duel.Fields[GetLocalPlayer(0)].Init(deck, extra, GetLocalPlayer(0));
             deck = packet.ReadInt16();
             extra = packet.ReadInt16();
-            _duel.Fields[GetLocalPlayer(1)].Init(deck, extra);
+            _duel.Fields[GetLocalPlayer(1)].Init(deck, extra, GetLocalPlayer(1));
+
+            _duel.Fields[0].SetInitialDeck(Deck.Cards);
+            // In tag duels the first team's lower lobby slot and the second team's upper
+            // lobby slot begin with their physical deck active. Later TAG_SWAP messages
+            // toggle the active teammate for that side.
+            _botDeckActive = !_isTag || (_duel.IsFirst
+                ? _room.Position % 2 == 0
+                : _room.Position % 2 == 1);
+            _botDeckNeedsInitialHandSync = _isTag && !_botDeckActive;
+            _duel.Fields[0].DeckTrackingActive = _botDeckActive;
+            ValidateBotDeckCount();
 
             // in case of ending duel in chain's solving
             _duel.CurrentChain.Clear();
@@ -406,7 +463,15 @@ namespace WindBot.Game
             _duel.SolvingChainIndex = 0;
             _duel.NegatedChainIndexList.Clear();
 
-            Logger.DebugWriteLine("Duel started: " + _room.Names[0] + " versus " + _room.Names[1]);
+            if (_isTag)
+            {
+                Logger.DebugWriteLine("Duel started: " + _room.Names[0] + " and " + _room.Names[1] +
+                    " versus " + _room.Names[2] + " and " + _room.Names[3]);
+            }
+            else
+            {
+                Logger.DebugWriteLine("Duel started: " + _room.Names[0] + " versus " + _room.Names[1]);
+            }
             _ai.OnStart();
         }
 
@@ -414,7 +479,17 @@ namespace WindBot.Game
         {
             int result = GetLocalPlayer(packet.ReadByte());
 
-            string otherName = _room.Position == 0 ? _room.Names[1] : _room.Names[0];
+            string otherName;
+            if (_isTag)
+            {
+                int opponentTeamPosition = _room.Position < 2 ? 2 : 0;
+                otherName = _room.Names[opponentTeamPosition] + " and " +
+                    _room.Names[opponentTeamPosition + 1];
+            }
+            else
+            {
+                otherName = _room.Position == 0 ? _room.Names[1] : _room.Names[0];
+            }
             string textResult = (result == 2 ? "Draw" : result == 0 ? "Win" : "Lose");
             Logger.DebugWriteLine("Duel finished against " + otherName + ", result: " + textResult);
         }
@@ -429,11 +504,13 @@ namespace WindBot.Game
             for (int i = 0; i < count; ++i)
             {
                 int cardId = packet.ReadInt32() & 0x7fffffff;
+                TrackDeckMove(cardId, player, (int)CardLocation.Deck, player, (int)CardLocation.Hand);
                 int deckIndex = _duel.Fields[player].Deck.Count - 1;
                 ClientCard card = _duel.Fields[player].Deck[deckIndex];
                 _duel.Fields[player].Deck.RemoveAt(deckIndex);
                 _duel.AddCard(CardLocation.Hand, card, player, -1, 0, cardId);
             }
+            ValidateBotDeckCount();
             _ai.OnDraw(player);
         }
 
@@ -485,41 +562,62 @@ namespace WindBot.Game
                 int loc = packet.ReadByte();
                 int seq = packet.ReadByte();
                 /*int sseq = */packet.ReadByte();
-                ClientCard card = _duel.GetCard(player, (CardLocation)loc, seq);
-                if (card == null) continue;
-                ClientCard[] zone = (loc == (int)CardLocation.MonsterZone) ? _duel.Fields[player].MonsterZone : _duel.Fields[player].SpellZone;
-                zone[seq] = list[i];
+                ClientCard card = list[i];
+                if (loc == 0 || card == null) continue;
+                ClientCard[] zone = (location == (int)CardLocation.MonsterZone) ? _duel.Fields[player].MonsterZone : _duel.Fields[player].SpellZone;
+                int previousSequence = card.Sequence;
+                ClientCard swappedCard = zone[seq];
+                zone[previousSequence] = swappedCard;
+                zone[seq] = card;
+                card.Sequence = seq;
+                if (swappedCard != null)
+                    swappedCard.Sequence = previousSequence;
             }
         }
 
         private void OnSwapGraveDeck(BinaryReader packet)
         {
             int player = GetLocalPlayer(packet.ReadByte());
-            IList<ClientCard> tmpDeckList = _duel.Fields[player].Deck.ToList();
-            _duel.Fields[player].Deck.Clear();
-            int seq = 0;
-            foreach(var card in _duel.Fields[player].Graveyard)
+            ClientField field = _duel.Fields[player];
+            IList<ClientCard> oldDeck = field.Deck.ToList();
+            IList<ClientCard> oldGraveyard = field.Graveyard.ToList();
+            if (player == 0 && _botDeckActive)
+                field.TrackReplaceDeck(oldGraveyard.Where(card => card != null && !card.IsExtraCard()));
+            field.Deck.Clear();
+            field.Graveyard.Clear();
+
+            int deckSequence = 0;
+            int extraSequence = field.ExtraDeck.TakeWhile(card => !card.IsFaceup()).Count();
+            foreach (ClientCard card in oldGraveyard)
             {
+                card.LastLocation = CardLocation.Grave;
                 if (card.IsExtraCard())
                 {
-                    _duel.Fields[player].ExtraDeck.Add(card);
-                    card.Location = CardLocation.Extra;
-                    card.Position = (int)CardPosition.FaceDown;
-                    // TODO: face-up P cards
+                    _duel.AddCard(CardLocation.Extra, card, player, extraSequence++,
+                        (int)CardPosition.FaceDownDefence, card.Id);
                 }
                 else
                 {
-                    _duel.Fields[player].Deck.Add(card);
-                    card.Location = CardLocation.Deck;
-                    card.Sequence = seq++;
+                    _duel.AddCard(CardLocation.Deck, card, player, deckSequence++,
+                        (int)CardPosition.FaceDownDefence, card.Id);
                 }
             }
-            _duel.Fields[player].Graveyard.Clear();
-            foreach (var card in tmpDeckList)
+
+            int graveSequence = 0;
+            foreach (ClientCard card in oldDeck)
             {
-                _duel.Fields[player].Graveyard.Add(card);
-                card.Location = CardLocation.Grave;
+                card.LastLocation = CardLocation.Deck;
+                _duel.AddCard(CardLocation.Grave, card, player, graveSequence++,
+                    (int)CardPosition.FaceUp, card.Id);
             }
+            ValidateBotDeckCount();
+        }
+
+        private void OnReverseDeck(BinaryReader packet)
+        {
+            // DeckReversed is currently unused by the bot.
+            // YGOPro does not refresh deck card sequences on reverse.
+            _duel.DeckReversed = !_duel.DeckReversed;
         }
 
         private void OnTagSwap(BinaryReader packet)
@@ -527,25 +625,66 @@ namespace WindBot.Game
             int player = GetLocalPlayer(packet.ReadByte());
             int mcount = packet.ReadByte();
             int ecount = packet.ReadByte();
-            /*int pcount = */ packet.ReadByte();
+            int pcount = packet.ReadByte();
             int hcount = packet.ReadByte();
-            /*int topcode =*/ packet.ReadInt32();
-            _duel.Fields[player].Deck.Clear();
+            /*int topcode = */ packet.ReadInt32();
+            ClientField field = _duel.Fields[player];
+
+            if (player == 0)
+            {
+                if (_botDeckActive)
+                    ValidateBotDeckCount();
+                _botDeckActive = !_botDeckActive;
+                field.DeckTrackingActive = _botDeckActive;
+            }
+
+            field.Deck.Clear();
             for (int i = 0; i < mcount; ++i)
             {
-                _duel.Fields[player].Deck.Add(new ClientCard(0, CardLocation.Deck, -1));
+                ClientCard card = new ClientCard(0, CardLocation.Deck, i, (int)CardPosition.FaceDownDefence);
+                card.Owner = player;
+                card.Controller = player;
+                field.Deck.Add(card);
             }
-            _duel.Fields[player].ExtraDeck.Clear();
-            for (int i = 0; i < ecount; ++i)
-            {
-                int code = packet.ReadInt32() & 0x7fffffff;
-                _duel.Fields[player].ExtraDeck.Add(new ClientCard(code, CardLocation.Extra, -1));
-            }
-            _duel.Fields[player].Hand.Clear();
+
+            field.Hand.Clear();
             for (int i = 0; i < hcount; ++i)
             {
-                int code = packet.ReadInt32();
-                _duel.Fields[player].Hand.Add(new ClientCard(code, CardLocation.Hand,-1));
+                uint encodedCode = packet.ReadUInt32();
+                int code = (int)(encodedCode & 0x7fffffff);
+                // ocgcore draws an inactive tag partner's opening hand without sending DRAW
+                // to that client, so its first visible hand must be deducted here.
+                if (player == 0 && _botDeckActive && _botDeckNeedsInitialHandSync)
+                    field.TrackRemoveFromDeck(code);
+                int position = (encodedCode & 0x80000000) != 0
+                    ? (int)CardPosition.FaceUp
+                    : (int)CardPosition.FaceDown;
+                ClientCard card = new ClientCard(code, CardLocation.Hand, i, position);
+                card.Owner = player;
+                card.Controller = player;
+                field.Hand.Add(card);
+            }
+
+            field.ExtraDeck.Clear();
+            int faceupSequence = Math.Max(0, ecount - pcount);
+            for (int i = 0; i < ecount; ++i)
+            {
+                uint encodedCode = packet.ReadUInt32();
+                int code = (int)(encodedCode & 0x7fffffff);
+                bool isFaceup = i >= faceupSequence || (encodedCode & 0x80000000) != 0;
+                int position = isFaceup
+                    ? (int)CardPosition.FaceUpDefence
+                    : (int)CardPosition.FaceDownDefence;
+                ClientCard card = new ClientCard(code, CardLocation.Extra, i, position);
+                card.Owner = player;
+                card.Controller = player;
+                field.ExtraDeck.Add(card);
+            }
+            if (player == 0)
+            {
+                if (_botDeckActive)
+                    _botDeckNeedsInitialHandSync = false;
+                ValidateBotDeckCount();
             }
         }
 
@@ -623,47 +762,85 @@ namespace WindBot.Game
 
         private void OnMove(BinaryReader packet)
         {
-            // TODO: update equip cards and target cards
+            // MSG_MOVE stores an overlay material's index in the position byte and combines
+            // CardLocation.Overlay with the host card's zone in the location byte.
             int cardId = packet.ReadInt32();
             int previousControler = GetLocalPlayer(packet.ReadByte());
             int previousLocation = packet.ReadByte();
             int previousSequence = packet.ReadSByte();
-            /*int previousPosotion = */packet.ReadSByte();
+            int previousPosition = packet.ReadByte();
             int currentControler = GetLocalPlayer(packet.ReadByte());
             int currentLocation = packet.ReadByte();
             int currentSequence = packet.ReadSByte();
-            int currentPosition = packet.ReadSByte();
+            int currentPosition = packet.ReadByte();
             packet.ReadInt32(); // reason
 
-            ClientCard card = _duel.GetCard(previousControler, (CardLocation)previousLocation, previousSequence);
+            // Keep logical locations for AI callbacks. The compound protocol locations are
+            // still needed below to find the host card and the material by index.
+            int previousMoveLocation = (previousLocation & (int)CardLocation.Overlay) != 0
+                ? (int)CardLocation.Overlay
+                : previousLocation;
+            int currentMoveLocation = (currentLocation & (int)CardLocation.Overlay) != 0
+                ? (int)CardLocation.Overlay
+                : currentLocation;
+
+            // GetCard uses previousPosition as the material index when previousLocation has
+            // the Overlay flag. Overlay materials are otherwise stored only as IDs on their host.
+            ClientCard card = _duel.GetCard(previousControler, previousLocation, previousSequence, previousPosition);
             if (card != null)
             {
                 card.LastLocation = (CardLocation)previousLocation;
+                if (previousLocation != currentLocation)
+                {
+                    card.ClearEquipRelations();
+                    card.ClearCardTargets();
+                }
             }
+            int trackedCardId = cardId;
+            if (trackedCardId == 0 && card != null)
+                trackedCardId = card.Id;
+            TrackDeckMove(trackedCardId, previousControler, previousLocation, currentControler, currentLocation);
             if ((previousLocation & (int)CardLocation.Overlay) != 0)
             {
-                previousLocation = previousLocation & 0x7f;
-                card = _duel.GetCard(previousControler, (CardLocation)previousLocation, previousSequence);
-                if (card != null)
+                // Detach by index rather than ID because a host may have multiple materials
+                // with the same card ID. GetCard reconstructed the material object above.
+                int overlayTargetLocation = previousLocation & 0x7f;
+                ClientCard overlayTarget = _duel.GetCard(previousControler, (CardLocation)overlayTargetLocation, previousSequence);
+                if (overlayTarget != null && previousPosition < overlayTarget.Overlays.Count)
                 {
                     if (_debug)
-                        Logger.WriteLine("(" + previousControler.ToString() + " 's " + (card.Name ?? "UnKnowCard") + " deattach " + (NamedCard.Get(cardId)?.Name) + ")");
-                    card.Overlays.Remove(cardId);
+                        Logger.WriteLine("(" + previousControler.ToString() + " 's " + (overlayTarget.Name ?? "UnKnowCard") + " deattach " + (NamedCard.Get(cardId)?.Name) + ")");
+                    overlayTarget.Overlays.RemoveAt(previousPosition);
                 }
-                previousLocation = 0; // the card is removed when it go to overlay, so here we treat it as a new card
+                if (card == null)
+                    card = new ClientCard(cardId, CardLocation.Overlay, 0, 0);
+                card.LastLocation = CardLocation.Overlay;
+                // The reconstructed material is not present in any regular field list. Route it
+                // through the same add path as a newly appearing card if it leaves the overlay.
+                previousLocation = 0;
             }
             else
                 _duel.RemoveCard((CardLocation)previousLocation, card, previousControler, previousSequence);
 
             if ((currentLocation & (int)CardLocation.Overlay) != 0)
             {
-                currentLocation = currentLocation & 0x7f;
-                card = _duel.GetCard(currentControler, (CardLocation)currentLocation, currentSequence);
-                if (card != null)
+                // WindBot stores attached materials only as IDs on the host, so Duel no longer
+                // retains this ClientCard. Normalize it for OnMove and any executor references to it.
+                int overlayTargetLocation = currentLocation & 0x7f;
+                ClientCard overlayTarget = _duel.GetCard(currentControler, (CardLocation)overlayTargetLocation, currentSequence);
+                if (overlayTarget != null)
                 {
                     if (_debug)
-                        Logger.WriteLine("(" + previousControler.ToString() + " 's " + (card.Name ?? "UnKnowCard") + " overlay " + (NamedCard.Get(cardId)?.Name) + ")");
-                    card.Overlays.Add(cardId);
+                        Logger.WriteLine("(" + previousControler.ToString() + " 's " + (overlayTarget.Name ?? "UnKnowCard") + " overlay " + (NamedCard.Get(cardId)?.Name) + ")");
+                    overlayTarget.Overlays.Add(cardId);
+                }
+                if (card != null)
+                {
+                    card.SetId(cardId);
+                    card.Location = CardLocation.Overlay;
+                    card.Sequence = currentPosition;
+                    card.Position = 0;
+                    card.Controller = currentControler;
                 }
             }
             else
@@ -673,7 +850,11 @@ namespace WindBot.Game
                     if (_debug)
                         Logger.WriteLine("(" + previousControler.ToString() + " 's " + (NamedCard.Get(cardId)?.Name)
                         + " appear in " + (CardLocation)currentLocation + ")");
-                    _duel.AddCard((CardLocation)currentLocation, cardId, currentControler, currentSequence, currentPosition);
+                    // Reuse a reconstructed overlay material so its LastLocation survives the
+                    // move. For a genuinely new card, create the client object before adding it.
+                    if (card == null)
+                        card = new ClientCard(cardId, (CardLocation)currentLocation, currentSequence, currentPosition);
+                    _duel.AddCard((CardLocation)currentLocation, card, currentControler, currentSequence, currentPosition, cardId);
                 }
                 else
                 {
@@ -686,8 +867,11 @@ namespace WindBot.Game
                         (CardLocation)previousLocation + " move to " + (CardLocation)currentLocation + ")");
                 }
             }
-        
-            _ai.OnMove(card, previousControler, previousLocation, currentControler, currentLocation);
+
+            // Report Overlay as the material's location instead of the encoded host zone. This
+            // prevents deck executors from treating material attachment as entry to a field zone.
+            ValidateBotDeckCount();
+            _ai.OnMove(card, previousControler, previousMoveLocation, currentControler, currentMoveLocation);
         }
 
         private void OnSwap(BinaryReader packet)
@@ -705,10 +889,15 @@ namespace WindBot.Game
             ClientCard card1 = _duel.GetCard(controler1, (CardLocation)location1, sequence1);
             ClientCard card2 = _duel.GetCard(controler2, (CardLocation)location2, sequence2);
             if (card1 == null || card2 == null) return;
+            int trackedCardId1 = cardId1 != 0 ? cardId1 : card1.Id;
+            int trackedCardId2 = cardId2 != 0 ? cardId2 : card2.Id;
+            TrackDeckMove(trackedCardId1, controler1, location1, controler2, location2);
+            TrackDeckMove(trackedCardId2, controler2, location2, controler1, location1);
             _duel.RemoveCard((CardLocation)location1, card1, controler1, sequence1);
             _duel.RemoveCard((CardLocation)location2, card2, controler2, sequence2);
             _duel.AddCard((CardLocation)location2, card1, controler2, sequence2, card1.Position, cardId1);
             _duel.AddCard((CardLocation)location1, card2, controler1, sequence1, card2.Position, cardId2);
+            ValidateBotDeckCount();
         }
 
         private void OnAttack(BinaryReader packet)
@@ -732,6 +921,7 @@ namespace WindBot.Game
             _duel.Fields[attackcard.Controller].BattlingMonster = attackcard;
             _duel.Fields[1 - attackcard.Controller].BattlingMonster = defendcard;
             _duel.Fields[1 - attackcard.Controller].UnderAttack = true;
+            _ai.OnAttack();
 
             if (ld == 0 && ca != 0)
             {
@@ -764,7 +954,10 @@ namespace WindBot.Game
             {
                 card.Position = cp;
                 if ((pp & (int) CardPosition.FaceUp) > 0 && (cp & (int) CardPosition.FaceDown) > 0)
+                {
+                    card.ClearEquipRelations();
                     card.ClearCardTargets();
+                }
                 if (_debug)
                     Logger.WriteLine("(" + (card.Name ?? "UnKnowCard") + " change position to " + (CardPosition)cp + ")");
             }
@@ -1308,100 +1501,6 @@ namespace WindBot.Game
             Connection.Send(reply);
         }
 
-        private void OnSelectDisfield(BinaryReader packet)
-        {
-            packet.ReadByte(); // player
-            packet.ReadByte(); // TODO: min
-            int field = ~packet.ReadInt32();
-
-            int player;
-            CardLocation location;
-            int filter;
-            if ((field & 0x7f0000) != 0)
-            {
-                player = 1;
-                location = CardLocation.MonsterZone;
-                filter = (field >> 16) & Zones.MonsterZones;
-            }
-            else if ((field & 0x1f000000) != 0)
-            {
-                player = 1;
-                location = CardLocation.SpellZone;
-                filter = (field >> 24) & Zones.SpellZones;
-            }
-            else if ((field & 0x7f) != 0)
-            {
-                player = 0;
-                location = CardLocation.MonsterZone;
-                filter = field & Zones.MonsterZones;
-            }
-            else if ((field & 0x1f00) != 0)
-            {
-                player = 0;
-                location = CardLocation.SpellZone;
-                filter = (field >> 8) & Zones.SpellZones;
-            }
-            else if ((field & 0x2000) != 0)
-            {
-                player = 0;
-                location = CardLocation.FieldZone;
-                filter = Zones.FieldZone;
-            }
-            else if ((field & 0xc000) != 0)
-            {
-                player = 0;
-                location = CardLocation.PendulumZone;
-                filter = (field >> 14) & Zones.PendulumZones;
-            }
-            else if ((field & 0x20000000) != 0)
-            {
-                player = 1;
-                location = CardLocation.FieldZone;
-                filter = Zones.FieldZone;
-            }
-            else
-            {
-                player = 1;
-                location = CardLocation.PendulumZone;
-                filter = (field >> 30) & Zones.PendulumZones;
-            }
-
-            int selected = _ai.OnSelectPlace(_select_hint, player, location, filter);
-            _select_hint = 0;
-
-            byte[] resp = new byte[3];
-            resp[0] = (byte)GetLocalPlayer(player);
-
-            if (location != CardLocation.PendulumZone && location != CardLocation.FieldZone)
-            {
-                resp[1] = (byte)location;
-                if ((selected & filter) > 0)
-                    filter &= selected;
-
-                if ((filter & Zones.z2) != 0) resp[2] = 2;
-                else if ((filter & Zones.z1) != 0) resp[2] = 1;
-                else if ((filter & Zones.z3) != 0) resp[2] = 3;
-                else if ((filter & Zones.z0) != 0) resp[2] = 0;
-                else if ((filter & Zones.z4) != 0) resp[2] = 4;
-                else if ((filter & Zones.z6) != 0) resp[2] = 6;
-                else if ((filter & Zones.z5) != 0) resp[2] = 5;
-            }
-            else
-            {
-                resp[1] = (byte)CardLocation.SpellZone;
-                if ((selected & filter) > 0)
-                    filter &= selected;
-
-                if ((filter & Zones.FieldZone) != 0) resp[2] = 5;
-                if ((filter & Zones.z0) != 0) resp[2] = 6; // left pendulum zone
-                if ((filter & Zones.z1) != 0) resp[2] = 7; // right pendulum zone
-            }
-
-            BinaryWriter reply = GamePacketFactory.Create(CtosMessage.Response);
-            reply.Write(resp);
-            Connection.Send(reply);
-        }
-
         private void OnSelectEffectYn(BinaryReader packet)
         {
             packet.ReadByte(); // player
@@ -1510,99 +1609,53 @@ namespace WindBot.Game
             Connection.Send(CtosMessage.Response, _ai.OnSelectOption(options));
         }
 
-        private void OnSelectPlace(BinaryReader packet)
+        private void InternalOnSelectPlace(BinaryReader packet, Func<int, int, uint, uint> func)
         {
             packet.ReadByte(); // player
-            packet.ReadByte(); // min
-            int field = ~packet.ReadInt32();
+            int count = packet.ReadByte();
+            uint field = ~packet.ReadUInt32();
 
-            int player;
-            CardLocation location;
-            int filter;
-
-            if ((field & 0x7f) != 0)
-            {
-                player = 0;
-                location = CardLocation.MonsterZone;
-                filter = field & Zones.MonsterZones;
-            }
-            else if ((field & 0x1f00) != 0)
-            {
-                player = 0;
-                location = CardLocation.SpellZone;
-                filter = (field >> 8) & Zones.SpellZones;
-            }
-            else if ((field & 0x2000) != 0)
-            {
-                player = 0;
-                location = CardLocation.FieldZone;
-                filter = Zones.FieldZone;
-            }
-            else if ((field & 0xc000) != 0)
-            {
-                player = 0;
-                location = CardLocation.PendulumZone;
-                filter = (field >> 14) & Zones.PendulumZones;
-            }
-            else if ((field & 0x7f0000) != 0)
-            {
-                player = 1;
-                location = CardLocation.MonsterZone;
-                filter = (field >> 16) & Zones.MonsterZones;
-            }
-            else if ((field & 0x1f000000) != 0)
-            {
-                player = 1;
-                location = CardLocation.SpellZone;
-                filter = (field >> 24) & Zones.SpellZones;
-            }
-            else if ((field & 0x20000000) != 0)
-            {
-                player = 1;
-                location = CardLocation.FieldZone;
-                filter = Zones.FieldZone;
-            }
-            else
-            {
-                player = 1;
-                location = CardLocation.PendulumZone;
-                filter = (field >> 30) & Zones.PendulumZones;
-            }
-
-            int selected = _ai.OnSelectPlace(_select_hint, player, location, filter);
+            uint selected = func(_select_hint, count, field);
             _select_hint = 0;
 
-            byte[] resp = new byte[3];
-            resp[0] = (byte)GetLocalPlayer(player);
-
-            if (location != CardLocation.PendulumZone && location != CardLocation.FieldZone)
+            byte[] resp = new byte[Math.Max(1, count) * 3];
+            int responseIndex = 0;
+            for (int zone = 0; zone < 32 && responseIndex < resp.Length; ++zone)
             {
-                resp[1] = (byte)location;
-                if ((selected & filter) > 0)
-                    filter &= selected;
+                if ((selected & (1u << zone)) == 0)
+                    continue;
 
-                if ((filter & Zones.z2) != 0) resp[2] = 2;
-                else if ((filter & Zones.z1) != 0) resp[2] = 1;
-                else if ((filter & Zones.z3) != 0) resp[2] = 3;
-                else if ((filter & Zones.z0) != 0) resp[2] = 0;
-                else if ((filter & Zones.z4) != 0) resp[2] = 4;
-                else if ((filter & Zones.z6) != 0) resp[2] = 6;
-                else if ((filter & Zones.z5) != 0) resp[2] = 5;
-            }
-            else
-            {
-                resp[1] = (byte)CardLocation.SpellZone;
-                if ((selected & filter) > 0)
-                    filter &= selected;
+                int sequence = zone & 0xf;
+                if (sequence == 7)
+                    continue;
 
-                if ((filter & Zones.FieldZone) != 0) resp[2] = 5;
-                if ((filter & Zones.z0) != 0) resp[2] = 6; // left pendulum zone
-                if ((filter & Zones.z1) != 0) resp[2] = 7; // right pendulum zone
+                int player = zone >> 4;
+                resp[responseIndex++] = (byte)GetLocalPlayer(player);
+                if (sequence < 7)
+                {
+                    resp[responseIndex++] = (byte)CardLocation.MonsterZone;
+                    resp[responseIndex++] = (byte)sequence;
+                }
+                else
+                {
+                    resp[responseIndex++] = (byte)CardLocation.SpellZone;
+                    resp[responseIndex++] = (byte)(sequence - 8);
+                }
             }
 
             BinaryWriter reply = GamePacketFactory.Create(CtosMessage.Response);
             reply.Write(resp);
             Connection.Send(reply);
+        }
+
+        private void OnSelectDisfield(BinaryReader packet)
+        {
+            InternalOnSelectPlace(packet, _ai.OnSelectDisfield);
+        }
+
+        private void OnSelectPlace(BinaryReader packet)
+        {
+            InternalOnSelectPlace(packet, _ai.OnSelectPlace);
         }
 
         private void OnSelectPosition(BinaryReader packet)
@@ -1629,7 +1682,7 @@ namespace WindBot.Game
 
         private void OnSelectSum(BinaryReader packet)
         {
-            bool mode = packet.ReadByte() == 0;
+            bool exactEqual = packet.ReadByte() == 0;
             packet.ReadByte(); // player
             int sumval = packet.ReadInt32();
             int min = packet.ReadByte();
@@ -1695,7 +1748,8 @@ namespace WindBot.Game
                 }
             }
 
-            IList<ClientCard> selected = _ai.OnSelectSum(cards, mandatoryCards, sumval, min, max, _select_hint, mode);
+            IList<ClientCard> selected = _ai.OnSelectSum(cards, mandatoryCards, sumval, min, max,
+                _select_hint, exactEqual);
             _select_hint = 0;
 
             byte[] result = new byte[mandatoryCards.Count + selected.Count + 1];
@@ -1730,6 +1784,8 @@ namespace WindBot.Game
             int reply;
             if (desc == 30)
                 reply = _ai.OnSelectBattleReplay() ? 1 : 0;
+            else if (desc == 31)
+                reply = _ai.OnSelectBattleDirectAttack() ? 1 : 0;
             else
                 reply = _ai.OnSelectYesNo(desc) ? 1 : 0;
             Connection.Send(CtosMessage.Response, reply);
@@ -1767,7 +1823,7 @@ namespace WindBot.Game
             IList<NamedCard> all = NamedCardsManager.GetAllCards();
             foreach (NamedCard card in all)
             {
-                if (card.HasType(CardType.Token) || (card.Alias > 0 && card.Id - card.Alias < 10)) continue;
+                if (card.HasType(CardType.Token) || NamedCard.IsAltartAlias(card.Id, card.Alias)) continue;
                 Stack<int> stack = new Stack<int>();
                 for (int i = 0; i < opcodes.Count; i++)
                 {
@@ -1963,9 +2019,7 @@ namespace WindBot.Game
             ClientCard equipCard = _duel.GetCard(equipCardControler, (CardLocation)equipCardLocation, equipCardSequence);
             ClientCard targetCard = _duel.GetCard(targetCardControler, (CardLocation)targetCardLocation, targetCardSequence);
             if (equipCard == null || targetCard == null) return;
-            equipCard.EquipTarget?.EquipCards.Remove(equipCard);
-            equipCard.EquipTarget = targetCard;
-            targetCard.EquipCards.Add(equipCard);
+            equipCard.SetEquipTarget(targetCard);
         }
 
         private void OnUnEquip(BinaryReader packet)
@@ -1976,11 +2030,7 @@ namespace WindBot.Game
             packet.ReadByte();
             ClientCard equipCard = _duel.GetCard(equipCardControler, (CardLocation)equipCardLocation, equipCardSequence);
             if (equipCard == null) return;
-            if (equipCard.EquipTarget != null)
-            {
-                equipCard.EquipTarget.EquipCards.Remove(equipCard);
-                equipCard.EquipTarget = null;
-            }
+            equipCard.SetEquipTarget(null);
         }
 
         private void OnCardTarget(BinaryReader packet)
@@ -1996,8 +2046,7 @@ namespace WindBot.Game
             ClientCard ownerCard = _duel.GetCard(ownerCardControler, (CardLocation)ownerCardLocation, ownerCardSequence);
             ClientCard targetCard = _duel.GetCard(targetCardControler, (CardLocation)targetCardLocation, targetCardSequence);
             if (ownerCard == null || targetCard == null) return;
-            ownerCard.TargetCards.Add(targetCard);
-            targetCard.OwnTargets.Add(ownerCard);
+            ownerCard.AddCardTarget(targetCard);
         }
 
         private void OnCancelTarget(BinaryReader packet)
@@ -2013,8 +2062,7 @@ namespace WindBot.Game
             ClientCard ownerCard = _duel.GetCard(ownerCardControler, (CardLocation)ownerCardLocation, ownerCardSequence);
             ClientCard targetCard = _duel.GetCard(targetCardControler, (CardLocation)targetCardLocation, targetCardSequence);
             if (ownerCard == null || targetCard == null) return;
-            ownerCard.TargetCards.Remove(targetCard);
-            targetCard.OwnTargets.Remove(ownerCard);
+            ownerCard.RemoveCardTarget(targetCard);
         }
 
         private void OnSummoning(BinaryReader packet)
@@ -2064,6 +2112,7 @@ namespace WindBot.Game
             ClientCard card = _duel.GetCard(currentControler, (CardLocation)currentLocation, currentSequence);
             _duel.SummoningCards.Add(card);
             _duel.LastSummonPlayer = currentControler;
+            _ai.OnSpSummoning();
         }
 
         private void OnSpSummoned(BinaryReader packet)

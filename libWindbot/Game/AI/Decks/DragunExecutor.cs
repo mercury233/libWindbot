@@ -148,10 +148,10 @@ namespace WindBot.Game.AI.Decks
         public override IList<ClientCard> OnSelectCard(
             IList<ClientCard> cards, int min, int max, int hint, bool cancelable)
         {
-            ClientCard solvingChainCard = Duel.GetCurrentSolvingChainCard();
-            if (solvingChainCard != null &&
-                solvingChainCard.Controller == 0 &&
-                solvingChainCard.IsCode(CardId.Sangan) &&
+            ChainInfo solvingChain = Duel.GetCurrentSolvingChainInfo();
+            if (solvingChain != null &&
+                solvingChain.ActivatePlayer == 0 &&
+                solvingChain.IsActivateCode(CardId.Sangan) &&
                 hint == HintMsg.AddToHand)
             {
                 List<int> priority = new List<int>();
@@ -211,7 +211,7 @@ namespace WindBot.Game.AI.Decks
         {
             if (Bot.HasInHand(CardId.RedEyesFusion))
                 return false;
-            if (Bot.GetRemainingCount(CardId.RedEyesWyvern, 1) == 0 && Bot.GetRemainingCount(CardId.RedEyesBDragon, 2) == 1 && !Bot.HasInHand(CardId.RedEyesBDragon))
+            if (!Bot.HasInDeck(CardId.RedEyesWyvern) && Bot.GetCardCountInDeck(CardId.RedEyesBDragon) == 1 && !Bot.HasInHand(CardId.RedEyesBDragon))
                 return false;
             AI.SelectCard(CardId.RedEyesWyvern);
             return true;
@@ -223,7 +223,7 @@ namespace WindBot.Game.AI.Decks
             { // you don't want to use DragunofRedEyes which is treated as RedEyesBDragon as fusion material
                 if (Util.GetBotAvailZonesFromExtraDeck() == 0)
                     return false;
-                if (Bot.GetRemainingCount(CardId.RedEyesBDragon, 2) == 0 && !Bot.HasInHand(CardId.RedEyesBDragon))
+                if (!Bot.HasInDeck(CardId.RedEyesBDragon) && !Bot.HasInHand(CardId.RedEyesBDragon))
                     return false;
             }
             AI.SelectMaterials(CardLocation.Deck);
@@ -234,7 +234,7 @@ namespace WindBot.Game.AI.Decks
         private bool TourGuideFromTheUnderworldSummon()
         {
             if (DefaultCheckWhetherCardIsNegated(Card)) return false;
-            if (Bot.GetRemainingCount(CardId.TourGuideFromTheUnderworld, 2) == 0 && Bot.GetRemainingCount(CardId.Sangan, 2) == 0)
+            if (!Bot.HasInDeck(CardId.TourGuideFromTheUnderworld) && !Bot.HasInDeck(CardId.Sangan))
                 return false;
             return true;
         }
@@ -352,6 +352,7 @@ namespace WindBot.Game.AI.Decks
         {
             if (Bot.HasInMonstersZone(CardId.PredaplantVerteAnaconda, true))
                 return false;
+            if (Bot.LifePoints <= 2000) return false;
 
             int[] materials = new[] {
                 CardId.ImdukTheWorldChaliceDragon,
@@ -394,6 +395,7 @@ namespace WindBot.Game.AI.Decks
             if (DefaultCheckWhetherCardIsNegated(Card)) return false;
             if (ActivateDescription == Util.GetStringId(CardId.PredaplantVerteAnaconda, 0))
                 return false;
+            if (Bot.LifePoints <= 2000) return false;
             AI.SelectCard(CardId.RedEyesFusion);
             AI.SelectMaterials(CardLocation.Deck);
             return true;
