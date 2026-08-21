@@ -70,7 +70,7 @@ namespace WindBot.Game.AI.Decks
         public Monarch506Executor(GameAI ai, Duel duel)
             : base(ai, duel)
         {
-            UseNerfedCardEffects = !Config.GetBool("UsePreErrataEffects", false);
+            UseNerfedCardEffects = false; // TODO
 
             // 光暗龙的无效效果是强制效果，必须先于所有可选响应处理。
             AddExecutor(ExecutorType.Activate, CardId.LightAndDarknessDragon);
