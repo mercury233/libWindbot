@@ -55,12 +55,6 @@ namespace WindBot.Game.AI.Decks
             public const int InspectorBoarder = 15397015;
             public const int SkillDrain = 82732705;
 
-            public const int DimensionShifter = 91800273;
-            public const int MacroCosmos = 30241314;
-            public const int DimensionalFissure = 81674782;
-            public const int BanisheroftheRadiance = 94853057;
-            public const int BanisheroftheLight = 61528025;
-            public const int KashtiraAriseHeart = 48626373;
             public const int AccesscodeTalker = 86066372;
             public const int GhostMournerMoonlitChill = 52038441;
         }
@@ -186,7 +180,6 @@ namespace WindBot.Game.AI.Decks
         bool furnitureActivating = false;
         bool dimensionBarrierAnnouncing = false;
         int banSpSummonExceptFiendCount = 0;
-        int dimensionShifterCount = 0;
         int enemySpSummonFromExLastTurn = 0;
         int enemySpSummonFromExThisTurn = 0;
         bool enemyActivateInfiniteImpermanenceFromHand = false;
@@ -499,28 +492,6 @@ namespace WindBot.Game.AI.Decks
                 if (Enemy.HasInSpellZone(CardId.SkillDrain, true, true)) return true;
             }
             if (disablecheck) return Card.IsDisabled();
-            return false;
-        }
-
-        /// <summary>
-        /// Check whether cards will be removed. If so, do not send cards to grave.
-        /// </summary>
-        public bool CheckWhetherWillbeRemoved()
-        {
-            if (dimensionShifterCount > 0) return true;
-            List<int> checkIdList = new List<int> { CardId.BanisheroftheRadiance, CardId.BanisheroftheLight, CardId.MacroCosmos, CardId.DimensionalFissure,
-                CardId.KashtiraAriseHeart, 58481572 };
-            foreach (int cardid in checkIdList)
-            {
-                List<ClientField> fields = new List<ClientField> { Bot, Enemy };
-                foreach (ClientField cf in fields)
-                {
-                    if (cf.HasInMonstersZone(cardid, true, false, true) || cf.HasInSpellZone(cardid, true, true))
-                    {
-                        return true;
-                    }
-                }
-            }
             return false;
         }
 
@@ -1355,13 +1326,17 @@ namespace WindBot.Game.AI.Decks
         public override int OnSelectOption(IList<int> options)
         {
             // override for cooclock
-            if (options.Count() == 2 && options.Contains(1190) && options.Contains(1152))
+            // 1190/1152 are generic hint messages used by many cards, so confirm the resolving chain
+            ChainInfo currentSolvingChain = Duel.GetCurrentSolvingChainInfo();
+            if (currentSolvingChain != null && currentSolvingChain.ActivatePlayer == 0
+                && currentSolvingChain.IsActivateCode(CardId.LabrynthCooclock)
+                && options.Count() == 2 && options.Contains(1190) && options.Contains(1152))
             {
                 // 1190=Add to Hand, 1152=Special Summon
                 // return to hand to activate trap set this turn
                 bool canLink = Duel.Player == 0 && Duel.Phase <= DuelPhase.Main2;
                 if (!canLink && !Bot.HasInHand(CardId.LabrynthCooclock) && Bot.GetMonsters().Any(card => card.IsFaceup() && card.HasSetcode(SetcodeLabrynth))
-                    && !activatedCardIdList.Contains(CardId.LabrynthCooclock) && !CheckWhetherWillbeRemoved()
+                    && !activatedCardIdList.Contains(CardId.LabrynthCooclock) && !DefaultCheckWhetherBotWillBeBanished(CardType.Monster, CardLocation.Hand)
                     && (activatedCardIdList.Contains(CardId.BigWelcomeLabrynth) || Bot.GetSpells().All(card => setTrapThisTurn.Contains(card) || !card.IsCode(CardId.BigWelcomeLabrynth)))
                     && setTrapThisTurn.Any(card => card.IsFacedown() && card.IsCode(CardId.BigWelcomeLabrynth, _CardId.DimensionalBarrier, _CardId.InfiniteImpermanence, CardId.DestructiveDarumaKarmaCannon)))
                 {
@@ -1579,8 +1554,6 @@ namespace WindBot.Game.AI.Decks
         {
             if (Duel.Turn <= 1)
             {
-                dimensionShifterCount = 0;
-
                 enemySpSummonFromExLastTurn = 0;
                 enemySpSummonFromExThisTurn = 0;
                 banSpSummonExceptFiendCount = 0;
@@ -1589,7 +1562,6 @@ namespace WindBot.Game.AI.Decks
             enemySpSummonFromExThisTurn = 0;
             rollbackCopyCardId = 0;
 
-            if (dimensionShifterCount > 0) dimensionShifterCount--;
             if (banSpSummonExceptFiendCount > 0) banSpSummonExceptFiendCount--;
             infiniteImpermanenceList.Clear();
 
@@ -1638,11 +1610,6 @@ namespace WindBot.Game.AI.Decks
             ChainInfo currentChain = Duel.GetCurrentSolvingChainInfo();
             if (currentChain != null && !Duel.IsCurrentSolvingChainNegated())
             {
-                if (currentChain.ActivatePlayer == 1)
-                {
-                    if (currentChain.IsActivateCode(CardId.DimensionShifter))
-                        dimensionShifterCount = 2;
-                }
                 if (currentChain.ActivatePlayer == 0)
                 {
                     if (currentChain.IsActivateCode(CardId.LabrynthCooclock))
@@ -1936,7 +1903,7 @@ namespace WindBot.Game.AI.Decks
 
             // sp summon
             if (Bot.HasInSpellZone(CardId.TransactionRollback) && GetEmptyMainMonsterZoneCount() > chainSummoningIdList.Count()
-                    && !CheckWhetherWillbeRemoved() && !CheckShouldNoMoreSpSummon(CardLocation.Hand, false))
+                    && !DefaultCheckWhetherBotWillBeBanished(CardType.Trap, CardLocation.SpellZone) && !CheckShouldNoMoreSpSummon(CardLocation.Hand, false))
             {
                 AI.SelectCard(CardId.TransactionRollback);
                 activatedCardIdList.Add(Card.Id);
@@ -2074,9 +2041,10 @@ namespace WindBot.Game.AI.Decks
                 return true;
             }
             // for activate effect
-            if (!activatedCardIdList.Contains(Card.Id) && !CheckWhetherNegated(true, true) && !CheckWhetherWillbeRemoved())
+            if (!activatedCardIdList.Contains(Card.Id) && !CheckWhetherNegated(true, true))
             {
-                bool haveCost = Bot.Hand.Any(card => card.Type == (int)CardType.Trap) || Bot.GetSpells().Any(card => card.IsFacedown() && card.Type == (int)CardType.Trap);
+                bool haveCost = Bot.Hand.Any(card => card.Type == (int)CardType.Trap && !DefaultCheckWhetherBotWillBeBanished(card))
+                    || Bot.GetSpells().Any(card => card.IsFacedown() && card.Type == (int)CardType.Trap && !DefaultCheckWhetherBotWillBeBanished(card));
                 if (haveCost && !CheckShouldNoMoreSpSummon(CardLocation.Hand | CardLocation.Deck))
                 {
                     summoned = true;
@@ -2089,7 +2057,9 @@ namespace WindBot.Game.AI.Decks
         public bool ArianeTheLabrynthServantForRollbackSummon()
         {
             if (activatedCardIdList.Contains(Card.Id)) return false;
-            if (Bot.HasInHandOrInSpellZone(CardId.TransactionRollback) && !CheckWhetherWillbeRemoved())
+            bool haveCost = Bot.Hand.Any(card => card.IsCode(CardId.TransactionRollback) && !DefaultCheckWhetherBotWillBeBanished(card))
+                || Bot.GetSpells().Any(card => card.IsFacedown() && card.IsCode(CardId.TransactionRollback) && !DefaultCheckWhetherBotWillBeBanished(card));
+            if (haveCost)
             {
                 summoned = true;
                 return true;
@@ -2373,7 +2343,7 @@ namespace WindBot.Game.AI.Decks
 
         public bool ShouldSetBigWelcome(bool checkArianna = true)
         {
-            if (CheckWhetherWillbeRemoved()) return false;
+            if (DefaultCheckWhetherBotWillBeBanished()) return false;
             bool shouldTriggerBigWelcomeFlag = GetProblematicEnemyCardList(false).Count() > 0;
             shouldTriggerBigWelcomeFlag |= Duel.Player == 1 && Duel.Phase > DuelPhase.Main2;
             shouldTriggerBigWelcomeFlag |= Duel.Player == 1 && GetProblematicEnemyCardList(false).Count() == 0 && GetProblematicEnemyMonster(selfType: CardType.Monster) == null
@@ -3531,36 +3501,23 @@ namespace WindBot.Game.AI.Decks
         {
             if (CheckShouldNoMoreSpSummon(CardLocation.Extra, false)) return false;
             if (Enemy.GetMonsterCount() > 0 && Bot.HasInMonstersZone(CardId.UnchainedSoulOfAnguish) && !activatedCardIdList.Contains(CardId.UnchainedSoulOfAnguish)) return false;
-            List<List<ClientCard>> usableMaterialMultiList = new List<List<ClientCard>>();
-            // anguish + 1
             ClientCard anguish = Bot.GetMonsters().FirstOrDefault(card => card.IsCode(CardId.UnchainedSoulOfAnguish));
-            if (anguish != null)
-            {
-                List<ClientCard> materials = GetCanBeUsedForLinkMaterial(true, card => card == anguish);
-                if (materials.Count() > 0)
-                {
-                    usableMaterialMultiList.Add(new List<ClientCard> { anguish, materials[0] });
-                }
-            }
-            // link2 + 1 + 1 or link2 + link2
-            List<ClientCard> link2List = Bot.GetMonsters().Where(card => card.HasType(CardType.Link) && card.LinkCount == 2
-                && !(card.IsCode(CardId.MuckrakerFromTheUnderworld) && summonThisTurn.Contains(card))).OrderBy(card => card.Attack).ToList();
-            if (link2List.Count() > 0)
-            {
-                ClientCard link2Material = null;
-                ClientCard littleKnight = link2List.FirstOrDefault(card => card.Sequence >= 5 && card.IsCode(CardId.SPLittleKnight));
-                if (littleKnight != null) link2Material = littleKnight;
-                else link2Material = link2List[0];
-                if (link2List.Count() >= 2)
-                {
-                    usableMaterialMultiList.Add(new List<ClientCard> { link2Material, link2List.FirstOrDefault(card => card != link2Material) });
-                }
-                List<ClientCard> remainList = GetCanBeUsedForLinkMaterial(false, card => card != link2Material && !(card.HasType(CardType.Link) && card.LinkMarker > 2));
-                if (remainList.Count() >= 2)
-                {
-                    usableMaterialMultiList.Add(new List<ClientCard> { link2Material, remainList[0], remainList[1] });
-                }
-            }
+            List<ClientCard> expendableMaterials = GetCanBeUsedForLinkMaterial(false);
+            List<ClientCard> candidates = GetCanBeUsedForLinkMaterial(true)
+                .Where(card => card == anguish || !card.HasType(CardType.Link) || card.LinkCount <= 2)
+                .OrderByDescending(card => card == anguish)
+                .ThenByDescending(card => card.Sequence >= 5 && card.IsCode(CardId.SPLittleKnight))
+                .ThenBy(card => card.HasType(CardType.Link) ? 0 : 1)
+                .ThenBy(card => card.Attack)
+                .ToList();
+            List<List<ClientCard>> usableMaterialMultiList = Util.GetLinkMaterials(candidates, 4, 2, 4)
+                .Where(materials => (materials.Contains(anguish)
+                        || materials.Count(card => card.HasType(CardType.Link) && card.LinkCount == 2) >= 2
+                        || (materials.Count(card => card.HasType(CardType.Link) && card.LinkCount == 2) == 1
+                            && materials.Where(card => !card.HasType(CardType.Link) || card.LinkCount != 2)
+                                .All(card => expendableMaterials.Contains(card))))
+                    && Util.GetBotAvailZonesFromExtraDeck(materials) > 0)
+                .ToList();
 
             // check material list
             foreach (List<ClientCard> currMaterials in usableMaterialMultiList)
@@ -3919,54 +3876,12 @@ namespace WindBot.Game.AI.Decks
         }
         public List<ClientCard> SPLittleKnightSelectMaterial(bool needToUseEffect = false)
         {
-            List<ClientCard> usedMaterialList = new List<ClientCard>();
-            if (Bot.GetMonstersExtraZoneCount() > 0)
-            {
-                ClientCard botMonsterExtraZome = Bot.GetMonstersInExtraZone()[0];
-                if (botMonsterExtraZome.HasType(CardType.Fusion | CardType.Synchro | CardType.Xyz | CardType.Pendulum) || botMonsterExtraZome.IsCode(CardId.RelinquishedAnima))
-                {
-                    usedMaterialList.Add(botMonsterExtraZome);
-                    if (botMonsterExtraZome.HasType(CardType.Fusion | CardType.Synchro | CardType.Xyz | CardType.Link)) needToUseEffect = false;
-                }
-                List<ClientCard> materialList = GetCanBeUsedForLinkMaterial(true, card => card == botMonsterExtraZome);
-                if (materialList.Count() > 0)
-                {
-                    foreach (ClientCard card in materialList)
-                    {
-                        if (!needToUseEffect || card.HasType(CardType.Fusion | CardType.Synchro | CardType.Xyz) || (card.HasType(CardType.Link) && card.LinkCount <= 2))
-                        {
-                            usedMaterialList.Add(card);
-                            if (card.HasType(CardType.Fusion | CardType.Synchro | CardType.Xyz | CardType.Link)) needToUseEffect = false;
-                        }
-                        if (usedMaterialList.Count() >= 2) break;
-                    }
-                }
-                if (usedMaterialList.Count() < 2) usedMaterialList.Clear();
-            } else {
-                List<ClientCard> materialList = GetCanBeUsedForLinkMaterial(true, card => !needToUseEffect
-                    || card.HasType(CardType.Fusion | CardType.Synchro | CardType.Xyz) || (card.HasType(CardType.Link) && card.LinkCount <= 2));
-                if (materialList.Count() >= 2)
-                {
-                    for (int idx1 = 0; idx1 < materialList.Count() - 1; ++ idx1)
-                    {
-                        ClientCard material1 = materialList[idx1];
-                        if (material1.HasType(CardType.Link) && material1.LinkCount >= 3) continue;
-                        bool flag1 = !needToUseEffect || material1.HasType(CardType.Fusion | CardType.Synchro | CardType.Xyz | CardType.Link);
-                        for (int idx2 = 0; idx2 < materialList.Count(); ++ idx2)
-                        {
-                            ClientCard material2 = materialList[idx2];
-                            if (material2.HasType(CardType.Link) && material2.LinkCount >= 3) continue;
-                            bool flag2 = !needToUseEffect || material2.HasType(CardType.Fusion | CardType.Synchro | CardType.Xyz | CardType.Link);
-                            if (flag1 || flag2)
-                            {
-                                return new List<ClientCard>{material1, material2};
-                            }
-                        }
-                    }
-                }
-            }
-
-            return usedMaterialList;
+            List<ClientCard> candidates = GetCanBeUsedForLinkMaterial(true)
+                .Where(card => card.HasType(CardType.Effect)
+                    && (!card.HasType(CardType.Link) || card.LinkCount <= 2)).ToList();
+            return Util.GetLinkMaterials(candidates, 2, 2, 2).FirstOrDefault(materials =>
+                (!needToUseEffect || materials.Any(card => card.HasType(CardType.Fusion | CardType.Synchro | CardType.Xyz | CardType.Link)))
+                && Util.GetBotAvailZonesFromExtraDeck(materials) > 0) ?? new List<ClientCard>();
         }
 
         public bool SPLittleKnightActivate()

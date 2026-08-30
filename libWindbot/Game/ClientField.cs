@@ -252,6 +252,11 @@ namespace WindBot.Game
             return GetCards(MonsterZone);
         }
 
+        public List<ClientCard> GetFaceupMonsters()
+        {
+            return MonsterZone.Where(card => card != null && card.IsFaceup()).ToList();
+        }
+
         public List<ClientCard> GetGraveyardMonsters()
         {
             return GetCards(Graveyard, CardType.Monster);
@@ -367,6 +372,30 @@ namespace WindBot.Game
         public bool HasInSpellZone(IList<int> cardId, bool notDisabled = false, bool faceUp = false)
         {
             return HasInCards(SpellZone, cardId, notDisabled, false, faceUp);
+        }
+
+        /// <summary>
+        /// True if the given card is currently a pendulum card in a Pendulum Zone.
+        /// Left/right Spell/Trap columns can also hold a pendulum monster treated as a non-pendulum S/T, so current type must still be Pendulum.
+        /// </summary>
+        /// <param name="cardId">Card code to look for.</param>
+        /// <param name="notDisabled">If true, a disabled copy does not count.</param>
+        /// <returns>True if a matching face-up pendulum scale is in a Pendulum Zone.</returns>
+        public bool HasInPendulumZone(int cardId, bool notDisabled = false)
+        {
+            // Sequences 0/4 are P-zones in older layouts or the left/right S/T columns; 6/7 are dedicated P-zones.
+            ClientCard[] pendulumCards = new ClientCard[] { SpellZone[0], SpellZone[4], SpellZone[6], SpellZone[7] };
+            foreach (ClientCard card in pendulumCards)
+            {
+                if (card == null || !card.IsCode(cardId) || card.IsFacedown())
+                    continue;
+                if (notDisabled && card.IsDisabled())
+                    continue;
+                if (!card.HasType(CardType.Pendulum))
+                    continue;
+                return true;
+            }
+            return false;
         }
 
         public bool HasInHandOrInSpellZone(int cardId)
