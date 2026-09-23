@@ -89,7 +89,7 @@ namespace WindBot.Game.AI.Decks
         bool normalSummon = false;
         bool useRaviel = false;
         bool useOchestFromField = false;
-        bool useOchestFromGY = false;
+        //bool useOchestFromGY = false;
         bool Martyrx3 = false;
         bool unleashingHamonLinePlan = false;
         int fallenParadiseCostCode = 0;
@@ -177,7 +177,7 @@ namespace WindBot.Game.AI.Decks
             normalSummon = false;
             useRaviel = false;
             useOchestFromField = false;
-            useOchestFromGY = false;
+            //useOchestFromGY = false;
             unleashingHamonLinePlan = false;
             fallenParadiseTarget = 0;
             fallenParadiseCostCode = 0;
@@ -1305,7 +1305,7 @@ namespace WindBot.Game.AI.Decks
             if (card != null) return card;
             card = Enemy.MonsterZone.GetHighestAttackMonster(canBeTarget);
             if (card != null) return card;
-            List<ClientCard> monsters = Enemy.GetMonsters();
+            List<ClientCard> monsters = Enemy.GetMonsters().Where(c => !canBeTarget || !c.IsShouldNotBeTarget()).ToList();
             if (monsters.Count > 0 && !onlyFaceup) return Util.ShuffleList(monsters)[0];
             return null;
         }
@@ -2265,14 +2265,14 @@ namespace WindBot.Game.AI.Decks
                 if (!Bot.HasInMonstersZone(CardId.RavielSacredBeastOfEndlessEternity) && Bot.Graveyard.Any(c => c != null && c.IsCode(CardId.RavielSacredBeastOfEndlessEternity)))
                 {
                     AI.SelectCard(CardId.RavielSacredBeastOfEndlessEternity);
-                    useOchestFromGY = true;
+                    //useOchestFromGY = true;
                     return true;
                 }
 
                 if (!Bot.HasInMonstersZone(CardId.HamonSacredBeastOfSinfulCatastrophe) && Bot.Graveyard.Any(c => c != null && c.IsCode(CardId.HamonSacredBeastOfSinfulCatastrophe)))
                 {
                     AI.SelectCard(CardId.HamonSacredBeastOfSinfulCatastrophe);
-                    useOchestFromGY = true;
+                    //useOchestFromGY = true;
                     return true;
                 }
             }

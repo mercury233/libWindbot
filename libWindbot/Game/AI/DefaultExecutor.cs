@@ -215,6 +215,7 @@ namespace WindBot.Game.AI
             public const int GhostrickAlucard = 75367227;
             public const int DinowrestlerKingTWrextle = 77967790;
             public const int NumberF0UtopicFutureZexal = 41522092;
+            public const int RaiseMoonHopeSqueezeJackpot = 9484285;
 
             public const int PerformapalMissDirector = 92932860;
             public const int AncientWarriorsMasterfulSunMou = 40140448;
@@ -250,6 +251,7 @@ namespace WindBot.Game.AI
 
             public const int LoThePrayersOfTheVoicelessVoice = 25801745;
             public const int BarrierOfTheVoicelessVoice = 98477480;
+            public const int ElfnotesRhapsodiaOfMadness = 24092792;
 
             public const int DiabellzeOfTheOriginalSin = 53765052;
             public const int PotOfExtravagance = 49238328;
@@ -358,7 +360,8 @@ namespace WindBot.Game.AI
             {_CardId.GhostrickAlucard, defender => defender.HasSetcode(_Setcode.Ghostrick) || defender.IsFacedown()},
             {_CardId.MekkKnightCrusadiaAstram, defender => true},
             {_CardId.DinowrestlerKingTWrextle, defender => true},
-            {_CardId.NumberF0UtopicFutureZexal, defender => true}
+            {_CardId.NumberF0UtopicFutureZexal, defender => true},
+            {_CardId.RaiseMoonHopeSqueezeJackpot, defender => true}
         };
 
         /// <summary>
@@ -483,7 +486,7 @@ namespace WindBot.Game.AI
 
             foreach (ClientCard protecter in Enemy.GetMonsters())
             {
-                if (!protecter.IsDisabled() && protecter != defender)
+                if (protecter.IsFaceup() && !protecter.IsDisabled() && protecter != defender)
                 {
                     Func<ClientCard, bool> defenderRule = card => false;
                     if (DefenderProtectRule.TryGetValue(protecter.Id, out defenderRule))
@@ -538,6 +541,13 @@ namespace WindBot.Game.AI
             if (Enemy.HasInSpellZone(_CardId.BarrierOfTheVoicelessVoice, true) && Enemy.HasInMonstersZone(_CardId.LoThePrayersOfTheVoicelessVoice, faceUp: true)
                 && Enemy.GetMonsters().Any(card => card.HasType(CardType.Ritual) && card.IsFaceup()) && !defender.HasType(CardType.Ritual))
                 return false;
+
+            if (Enemy.HasInSpellZone(_CardId.ElfnotesRhapsodiaOfMadness, true))
+            {
+                ClientCard centerMonster = Enemy.MonsterZone[2];
+                if (centerMonster != null && defender != centerMonster)
+                    return false;
+            }
 
             return true;
         }
@@ -1577,7 +1587,8 @@ namespace WindBot.Game.AI
             if (Duel.Player != 0)
             {
                 List<ClientCard> monsters = Enemy.GetMonsters();
-                int[] levels = new int[13];
+                HashSet<int> levels = new HashSet<int>();
+                bool sameLevel = false;
                 bool tuner = false;
                 bool nontuner = false;
                 foreach (ClientCard monster in monsters)
@@ -1586,7 +1597,8 @@ namespace WindBot.Game.AI
                     {
                         if (monster.HasType(CardType.Tuner)) tuner = true;
                         else nontuner = true;
-                        if (!monster.HasType(CardType.Token)) levels[monster.Level] = levels[monster.Level] + 1;
+                        if (!monster.HasType(CardType.Token) && monster.Level > 0 && !levels.Add(monster.Level))
+                            sameLevel = true;
                     }
 
                     if (monster.IsOneForXyz())
@@ -1600,13 +1612,10 @@ namespace WindBot.Game.AI
                     AI.SelectOption(SYNCHRO);
                     return true;
                 }
-                for (int i=1; i<=12; i++)
+                if (sameLevel)
                 {
-                    if (levels[i]>1)
-                    {
-                        AI.SelectOption(XYZ);
-                        return true;
-                    }
+                    AI.SelectOption(XYZ);
+                    return true;
                 }
                 ClientCard l = Enemy.SpellZone[6];
                 ClientCard r = Enemy.SpellZone[7];
@@ -1902,7 +1911,7 @@ namespace WindBot.Game.AI
                 .Where(card => card?.Data != null && card.IsMonsterDangerous() && card.IsFaceup() && !card.IsShouldNotBeTarget())
                 .OrderByDescending(card => card.Attack).ToList();
             List<ClientCard> attackOrderedCards = monsters
-                .Where(card => card?.Data != null && card.HasType(CardType.Monster) && card.IsFaceup() && card.IsShouldNotBeTarget())
+                .Where(card => card?.Data != null && card.HasType(CardType.Monster) && card.IsFaceup() && !card.IsShouldNotBeTarget())
                 .OrderByDescending(card => card.Attack).ToList();
 
             targetList.AddRange(floodgateCards);
